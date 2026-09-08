@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tablero Presupuestario 2026 - Ministerio de Transporte</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .table-sticky-header th { position: sticky; top: 0; z-index: 10; }
+    .row-inciso { background-color: #f1f5f9; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; }
+    .row-subnivel-1 { background-color: #ffffff; font-weight: 500; color: #334155; }
+    .row-resto { background-color: #fefce8; font-weight: 600; color: #854d0e; }
+  </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased">
+
+  <!-- HEADER -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-sky-500 p-2.5 rounded-xl shadow-inner flex items-center justify-center text-white">
+          <i data-lucide="bus" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-sky-900/60 text-sky-300 border border-sky-700/50">Presupuesto 2026</span>
+            <h1 class="text-lg font-bold tracking-tight text-white leading-none">Ministerio de Transporte (MTRA)</h1>
+          </div>
+          <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-400"></i>
+            <span>Fecha de corte:</span>
+            <span id="label-fecha-corte" class="font-semibold text-sky-300">Cargando...</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        <button id="btn-refresh-sheets" onclick="actualizarDesdeGoogleSheets()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-sm hover:shadow">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>Actualizar desde Google Sheets</span>
+        </button>
+
+        <button onclick="exportToExcel()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+          <span>Exportar Apertura</span>
+        </button>
+
+        <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700">
+          <i data-lucide="printer" class="w-4 h-4 text-slate-400"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 space-y-2">
+
+    <!-- NOTIFICATION / TOAST -->
+    <div id="toast-banner" class="hidden rounded-lg p-3 text-sm flex items-center justify-between transition-all"></div>
+
+    <!-- FILTER PANEL -->
+    <section class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+        <div class="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-sky-600"></i>
+          <span>Filtros de Análisis Presupuestario</span>
+        </div>
+        <button onclick="resetFilters()" class="text-xs font-medium text-sky-600 hover:text-sky-800 flex items-center gap-1 transition">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Restablecer todo (Ver MTRA Completo)</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- Programa Filter -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="folder-tree" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>1. Programa Presupuestario</span>
+          </label>
+          <select id="select-programa" onchange="onProgramaChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todos los Programas</option>
+          </select>
+        </div>
+
+        <!-- Actividad / Unidad Ejecutora Filter -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>2. Actividad / Unidad Ejecutora</span>
+          </label>
+          <select id="select-actividad" onchange="onActividadChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todas las Actividades</option>
+          </select>
+        </div>
+
+        <!-- Fuente de Financiamiento Filter -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="coins" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>3. Fuente de Financiamiento</span>
+          </label>
+          <select id="select-ff" onchange="onFuenteFinanciamientoChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todas las Fuentes</option>
+            <option value="11">FF 11 - Rentas Generales</option>
+            <option value="13">FF 13 - Recursos con afactación específica</option>
+          </select>
+        </div>
+
+        <!-- Rubro Afectado Filter -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>4. Rubro Afectado</span>
+          </label>
+          <select id="select-rubro" onchange="actualizarIncisosDisponibles(); applyFilters()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todos los Rubros</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SECOND FILTER ROW -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+
+        <!-- 5. Incisos -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>5. Incisos</span>
+          </label>
+          <select id="select-inciso" onchange="applyFilters()"
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todos los Incisos</option>
+            <option value="2">2 - Bienes de Consumo</option>
+            <option value="3">3 - Servicios No Personales</option>
+            <option value="4">4 - Bienes de Uso</option>
+            <option value="5">5 - Transferencias</option>
+          </select>
+        </div>
+
+        <!-- 6. Excluir PROSEVITRA -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="filter-x" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>6. Excluir PROSEVITRA 5.3.3.50</span>
+          </label>
+          <select id="select-prosevitra" onchange="applyFilters()"
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="NO">No</option>
+            <option value="SI">Sí</option>
+          </select>
+        </div>
+
+        <!-- 7. Control de CUPO -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>7. Control de CUPO</span>
+          </label>
+          <select id="select-cupo" onchange="applyFilters()"
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            <option value="ALL">Todos</option>
+            <option value="SI">Sí</option>
+            <option value="NO">No</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Filter status badge -->
+      <div id="filter-status-bar" class="mt-3.5 pt-1 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <div class="flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="filter-active-desc">Mostrando: Ministerio de Transporte Completo</span>
+        </div>
+        <div id="filter-records-count" class="font-medium text-slate-600">-</div>
+      </div>
+    </section>
+
+    <!-- KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-500 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Crédito Vigente</span>
+          <div class="p-2 bg-sky-50 text-sky-600 rounded-xl">
+            <i data-lucide="wallet" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div>
+          <div id="kpi-vigente" class="text-2xl font-black text-slate-900 tracking-tight">$ 0,00</div>
+          <div class="text-xs text-slate-400 mt-1">Presupuesto modificado asignado</div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-sky-500"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-500 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Crédito Disponible</span>
+          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div>
+          <div id="kpi-disponible" class="text-2xl font-black text-emerald-600 tracking-tight">$ 0,00</div>
+          <div class="text-xs text-slate-400 mt-1">Saldo libre para afectación</div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-500 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Ejecutado</span>
+          <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+            <i data-lucide="trending-up" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div>
+          <div id="kpi-ejecutado" class="text-2xl font-black text-indigo-600 tracking-tight">$ 0,00</div>
+          <div class="text-xs text-slate-400 mt-1">Vigente - Disponible</div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-500 mb-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">% de Ejecución</span>
+          <div id="kpi-pct-icon-bg" class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+            <i data-lucide="pie-chart" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-baseline gap-2">
+            <span id="kpi-pct" class="text-3xl font-black text-slate-900 tracking-tight">0.00%</span>
+            <span id="kpi-pct-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Normal</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden">
+            <div id="kpi-progress-bar" class="bg-sky-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+      </div>
+    </section>
+
+    <!-- CHARTS & SUMMARY SECTION -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 lg:col-span-2 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4 text-sky-600"></i>
+            <h3 class="text-sm font-bold text-slate-800">Presupuesto Vigente vs Ejecutado por Inciso</h3>
+          </div>
+          <span class="text-xs text-slate-400">Valores en millones ($)</span>
+        </div>
+        <div class="flex-1 relative min-h-[260px]">
+          <canvas id="chart-incisos"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i>
+            <h3 class="text-sm font-bold text-slate-800">Distribución del Gasto Vigente</h3>
+          </div>
+        </div>
+        <div class="flex-1 relative min-h-[260px] flex items-center justify-center">
+          <canvas id="chart-doughnut"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLA OFICIAL DE APERTURA (DETALLE MTRA.XLSX) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-sky-600"></span>
+            <h2 class="text-base font-bold text-slate-900">Estructura Oficial de Apertura Presupuestaria MTRA</h2>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Detalle discriminado por Inciso y Partidas Principales / Parciales / Subparciales</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100/90 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 table-sticky-header">
+              <th class="py-3 px-4">Inciso / Partida / Concepto</th>
+              <th class="py-3 px-4 text-right">Crédito Vigente</th>
+              <th class="py-3 px-4 text-right">Crédito Disponible</th>
+              <th class="py-3 px-4 text-right text-indigo-900">Ejecutado</th>
+              <th class="py-3 px-4 text-center w-40">% Ejecución</th>
+            </tr>
+          </thead>
+          <tbody id="table-apertura-body" class="divide-y divide-slate-200/60 font-mono text-[11px]"></tbody>
+          <tfoot id="table-apertura-foot" class="bg-slate-900 text-white font-bold text-xs"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- EXPLORADOR DE IMPUTACIONES DETALLADAS -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="table-properties" class="w-4 h-4 text-slate-600"></i>
+            <h3 class="text-sm font-bold text-slate-900">Explorador de Imputaciones Presupuestarias MTRA</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Listado completo de todas las partidas filtradas según la selección activa</p>
+        </div>
+
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="search-imputaciones" oninput="onSearchInput()" placeholder="Buscar por descripción, código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition">
+          </div>
+          <button onclick="exportImputacionesExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition border border-slate-300 whitespace-nowrap">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-600"></i>
+            <span>Exportar Lista</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-96">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-600 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200 table-sticky-header">
+              <th class="py-2.5 px-3">Prg</th>
+              <th class="py-2.5 px-3">Act</th>
+              <th class="py-2.5 px-3">UE</th>
+              <th class="py-2.5 px-3">Inc.PP.PParc.PSub</th>
+              <th class="py-2.5 px-2 text-center">FF</th>
+              <th class="py-2.5 px-2 text-center">Rubro</th>
+              <th class="py-2.5 px-3">Descripción</th>
+              <th class="py-2.5 px-3 text-right">Vigente</th>
+              <th class="py-2.5 px-3 text-right">Disponible</th>
+              <th class="py-2.5 px-3 text-right">Ejecutado</th>
+              <th class="py-2.5 px-3 text-center">% Ejec</th>
+            </tr>
+          </thead>
+          <tbody id="table-imputaciones-body" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
+        </table>
+      </div>
+      <div id="imputaciones-pagination" class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500"></div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 mt-8 py-4 text-center text-xs text-slate-500 font-medium">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold tracking-wide uppercase">VRM</span>
+        <span>Ministerio de Transporte (MTRA) — Tablero de Control y Análisis Presupuestario | Presupuesto 2026</span>
+      </div>
+      <div class="flex items-center gap-3 text-slate-400 text-[11px]">
+        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">v26.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Los datos se obtienen exclusivamente desde Google Sheets.
+    // Esta estructura vacía permite que la interfaz se inicialice mientras se realiza la consulta.
+    let DB = {
+      ministerio: 'Ministerio de Transporte',
+      sigla: 'MTRA',
+      fechaCorte: '',
+      programas: {},
+      actividades: [],
+      unidadesEjecutoras: {},
+      records: []
+    };
+
+    let activeFilteredRecords = [];
+    let searchFilteredRecords = [];
+    let currentPage = 1;
+    const PAGE_SIZE = 50;
+
+    let chartIncisosInstance = null;
+    let chartDoughnutInstance = null;
+
+    const fmtMoney = (val) => {
+      if (val === undefined || val === null || isNaN(val)) return '$ 0,00';
+      return '$ ' + Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const fmtPct = (val) => {
+      if (val === undefined || val === null || isNaN(val)) return '0,00%';
+      return Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initApp();
+    });
+
+    async function initApp() {
+      document.getElementById('label-fecha-corte').textContent = 'Actualizando...';
+      await actualizarDesdeGoogleSheets();
+    }
+
+    function populateFilterOptions() {
+      const selectProg = document.getElementById('select-programa');
+      const selectAct = document.getElementById('select-actividad');
+
+      selectProg.innerHTML = '<option value="ALL">Todos los Programas</option>';
+      selectAct.innerHTML = '<option value="ALL">Todas las Actividades</option>';
+
+    const selectRubro = document.getElementById('select-rubro');
+    selectRubro.innerHTML = '<option value="ALL">Todos los Rubros</option>';
+    const rubros = [...new Set(DB.records.map(r => r.rubro).filter(v => Number.isFinite(v)))].sort((a, b) => a - b);
+    rubros.forEach(rubro => {
+      const opt = document.createElement('option');
+      opt.value = rubro;
+      opt.textContent = rubro === 0 ? '0 - Rentas Generales'
+        : rubro === 133 ? '133 - Licencias'
+        : rubro === 134 ? '134 - Multas'
+        : `${rubro} - Rubro ${rubro}`;
+      selectRubro.appendChild(opt);
+    });
+
+      Object.keys(DB.programas).sort((a, b) => Number(a) - Number(b)).forEach(pKey => {
+        const opt = document.createElement('option');
+        opt.value = pKey;
+        opt.textContent = DB.programas[pKey];
+        selectProg.appendChild(opt);
+      });
+
+      DB.actividades.forEach(act => {
+        const opt = document.createElement('option');
+        opt.value = `${act.programa}-${act.actividad}`;
+        opt.dataset.programa = act.programa;
+        opt.textContent = `Prog ${act.programa} / Act ${act.actividad} (UE ${act.ue}) - ${act.nombre}`;
+        selectAct.appendChild(opt);
+      });
+    }
+
+    function onProgramaChange() {
+      const selectedProg = document.getElementById('select-programa').value;
+      const selectAct = document.getElementById('select-actividad');
+
+      Array.from(selectAct.options).forEach(opt => {
+        if (opt.value === 'ALL') return;
+        if (selectedProg === 'ALL' || opt.dataset.programa === selectedProg) {
+          opt.style.display = 'block';
+        } else {
+          opt.style.display = 'none';
+        }
+      });
+
+      selectAct.value = 'ALL';
+      actualizarIncisosDisponibles();
+      applyFilters();
+    }
+
+    function onActividadChange() {
+      const selectedAct = document.getElementById('select-actividad').value;
+      const selectProg = document.getElementById('select-programa');
+
+      if (selectedAct !== 'ALL') {
+        const [p, a] = selectedAct.split('-');
+        selectProg.value = p;
+      }
+      actualizarIncisosDisponibles();
+      applyFilters();
+    }
+
+    // El Inciso también es jerárquico: sus opciones se calculan sobre los
+    // registros que cumplen Programa, Actividad, Fuente y Rubro seleccionados.
+    // De esta forma nunca se ofrecen incisos que no existen dentro de la
+    // combinación seleccionada (por ejemplo, los Programas 2 y 4 no muestran Inciso 5).
+    function actualizarIncisosDisponibles() {
+      const progVal = document.getElementById('select-programa').value;
+      const actVal = document.getElementById('select-actividad').value;
+      const ffVal = document.getElementById('select-ff').value;
+      const rubroVal = document.getElementById('select-rubro').value;
+      const selectInciso = document.getElementById('select-inciso');
+      const incisoAnterior = selectInciso.value;
+
+      const disponibles = DB.records.filter(r => {
+        if (r.inc === 1) return false;
+        if (progVal !== 'ALL' && r.p !== Number(progVal)) return false;
+        if (actVal !== 'ALL') {
+          const [p, a] = actVal.split('-');
+          if (r.p !== Number(p) || r.a !== Number(a)) return false;
+        }
+        if (ffVal !== 'ALL' && r.ff !== Number(ffVal)) return false;
+        if (rubroVal !== 'ALL' && r.rubro !== Number(rubroVal)) return false;
+        return true;
+      });
+
+      const incisos = [...new Set(disponibles.map(r => r.inc))]
+        .filter(v => Number.isFinite(v))
+        .sort((a, b) => a - b);
+
+      const nombresInciso = {
+        2: '2 - Bienes de Consumo',
+        3: '3 - Servicios No Personales',
+        4: '4 - Bienes de Uso',
+        5: '5 - Transferencias'
+      };
+
+      selectInciso.innerHTML = '<option value="ALL">Todos los Incisos</option>';
+      incisos.forEach(inc => {
+        const opt = document.createElement('option');
+        opt.value = String(inc);
+        opt.textContent = nombresInciso[inc] || `Inciso ${inc}`;
+        selectInciso.appendChild(opt);
+      });
+
+      // Si el inciso anterior ya no existe con los filtros actuales, se reinicia.
+      selectInciso.value = incisos.some(i => String(i) === String(incisoAnterior))
+        ? incisoAnterior
+        : 'ALL';
+    }
+
+    // El Rubro Afectado depende jerárquicamente de la Fuente de Financiamiento.
+    // FF 11 -> Rubro 0
+    // FF 13 -> Rubros 133 y 134
+    // Todas las FF -> todos los rubros disponibles en los datos.
+    function actualizarRubrosPorFuente() {
+      const ffVal = document.getElementById('select-ff').value;
+      const selectRubro = document.getElementById('select-rubro');
+      const rubroAnterior = selectRubro.value;
+
+      let rubros;
+
+      if (ffVal === '11') {
+        rubros = [0];
+      } else if (ffVal === '13') {
+        rubros = [133, 134];
+      } else {
+        rubros = [...new Set(
+          DB.records
+            .map(r => r.rubro)
+            .filter(v => Number.isFinite(v))
+        )].sort((a, b) => a - b);
+      }
+
+      selectRubro.innerHTML = '<option value="ALL">Todos los Rubros</option>';
+
+      rubros.forEach(rubro => {
+        const opt = document.createElement('option');
+        opt.value = String(rubro);
+        opt.textContent = rubro === 0 ? '0 - Rentas Generales'
+          : rubro === 133 ? '133 - Licencias'
+          : rubro === 134 ? '134 - Multas'
+          : `${rubro} - Rubro ${rubro}`;
+        selectRubro.appendChild(opt);
+      });
+
+      // Conserva el rubro sólo si sigue siendo válido para la FF seleccionada.
+      // Si no, vuelve a "Todos los Rubros".
+      const rubroSigueDisponible = rubros.some(r => String(r) === String(rubroAnterior));
+      selectRubro.value = rubroSigueDisponible ? rubroAnterior : 'ALL';
+    }
+
+    function onFuenteFinanciamientoChange() {
+      actualizarRubrosPorFuente();
+      actualizarIncisosDisponibles();
+      applyFilters();
+    }
+
+    function resetFilters() {
+      document.getElementById('select-programa').value = 'ALL';
+      document.getElementById('select-actividad').value = 'ALL';
+      document.getElementById('select-ff').value = 'ALL';
+      actualizarRubrosPorFuente();
+      document.getElementById('select-rubro').value = 'ALL';
+      actualizarIncisosDisponibles();
+      document.getElementById('select-inciso').value = 'ALL';
+      document.getElementById('select-prosevitra').value = 'NO';
+      document.getElementById('select-cupo').value = 'ALL';
+      document.getElementById('search-imputaciones').value = '';
+      onProgramaChange();
+    }
+
+    function applyFilters() {
+      const progVal = document.getElementById('select-programa').value;
+      const actVal = document.getElementById('select-actividad').value;
+      const ffVal = document.getElementById('select-ff').value;
+      const rubroVal = document.getElementById('select-rubro').value;
+      const incisoVal = document.getElementById('select-inciso').value;
+      const prosevitraVal = document.getElementById('select-prosevitra').value;
+      const cupoVal = document.getElementById('select-cupo').value;
+
+      activeFilteredRecords = DB.records.filter(r => {
+        if (r.inc === 1) return false;
+        if (progVal !== 'ALL' && r.p !== Number(progVal)) return false;
+        if (actVal !== 'ALL') {
+          const [p, a] = actVal.split('-');
+          if (r.p !== Number(p) || r.a !== Number(a)) return false;
+        }
+        
+        if (ffVal !== 'ALL' && r.ff !== Number(ffVal)) return false;
+        if (rubroVal !== 'ALL' && r.rubro !== Number(rubroVal)) return false;
+        if (incisoVal !== 'ALL' && r.inc !== Number(incisoVal)) return false;
+
+        // PROSEVITRA
+        function esPROSEVITRA(r) {
+          return r.inc === 5 && r.pp === 3 && r.pparc === 3 && r.psub === 50;
+        }
+        if (prosevitraVal === 'SI' && esPROSEVITRA(r)) return false;
+
+        // CONTROL DE CUPO
+        function noControlaCupo(r) {
+          return (
+                  (r.inc === 3 && r.pp === 5 && r.pparc === 4) || // 3.5.4
+                  (r.inc === 3 && r.pp === 1)                     // 3.1
+                  );
+        }
+        if (cupoVal === 'SI' && noControlaCupo(r)) return false;
+        if (cupoVal === 'NO' && !noControlaCupo(r)) return false;
+
+        return true;
+      });
+
+      let desc = [];
+      if (progVal === 'ALL' && actVal === 'ALL' && ffVal === 'ALL' && rubroVal === 'ALL') {
+        desc.push('Ministerio de Transporte Completo');
+      } else {
+        if (progVal !== 'ALL') desc.push(DB.programas[Number(progVal)] || `Prog ${progVal}`);
+        if (actVal !== 'ALL') {
+          const [p, a] = actVal.split('-');
+          const actObj = DB.actividades.find(item => item.programa === Number(p) && item.actividad === Number(a));
+          if (actObj) desc.push(`Act ${a}: ${actObj.nombre}`);
+        }
+        if (ffVal !== 'ALL') {
+          if (ffVal === '11') desc.push('FF 11 (Rentas Generales)');
+          else if (ffVal === '13') desc.push('FF 13 - Recursos con afectación específica');         
+        }
+        if (rubroVal !== 'ALL') {
+          if (rubroVal === '0') desc.push('0 - Rentas Generales');
+          else if (rubroVal === '133') desc.push('133 - Licencias');
+          else if (rubroVal === '134') desc.push('134 - Multas');   
+        }
+        
+        if (incisoVal !== 'ALL') {
+          const nombresInciso = {
+            2: 'Inciso 2 - Bienes de Consumo',
+            3: 'Inciso 3 - Servicios No Personales',
+            4: 'Inciso 4 - Bienes de Uso',
+            5: 'Inciso 5 - Transferencias'
+          };
+          desc.push(nombresInciso[incisoVal] || `Inciso ${incisoVal}`);
+        }
+        if (prosevitraVal === 'SI') {
+          desc.push('Sin 5.3.3.50 - PROSEVITRA');
+        }
+        if (cupoVal === 'SI') {
+          desc.push('Partidas CON Control de CUPO');
+        } else if (cupoVal === 'NO') {
+          desc.push('Partidas SIN Control de CUPO');
+        }
+      }
+
+      document.getElementById('filter-active-desc').textContent = 'Mostrando: ' + desc.join(' | ');
+      document.getElementById('filter-records-count').textContent = `${activeFilteredRecords.length} imputaciones`;
+
+      updateKPIs(activeFilteredRecords);
+      renderAperturaTable(activeFilteredRecords);
+      updateCharts(activeFilteredRecords);
+      onSearchInput();
+    }
+
+    function updateKPIs(records) {
+      const totalVigente = records.reduce((acc, r) => acc + r.vig, 0);
+      const totalDisponible = records.reduce((acc, r) => acc + r.disp, 0);
+      const totalEjecutado = totalVigente - totalDisponible;
+      const pct = totalVigente > 0 ? (totalEjecutado / totalVigente * 100) : 0;
+
+      document.getElementById('kpi-vigente').textContent = fmtMoney(totalVigente);
+      document.getElementById('kpi-disponible').textContent = fmtMoney(totalDisponible);
+      document.getElementById('kpi-ejecutado').textContent = fmtMoney(totalEjecutado);
+      document.getElementById('kpi-pct').textContent = fmtPct(pct);
+
+      const pBar = document.getElementById('kpi-progress-bar');
+      pBar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+
+      const badge = document.getElementById('kpi-pct-badge');
+      if (pct > 80) {
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        badge.textContent = 'Alto Avance';
+        pBar.className = 'bg-emerald-500 h-2 rounded-full transition-all duration-500';
+      } else if (pct >= 50) {
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800';
+        badge.textContent = 'Avance Medio';
+        pBar.className = 'bg-sky-500 h-2 rounded-full transition-all duration-500';
+      } else {
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+        badge.textContent = 'Bajo / Inicial';
+        pBar.className = 'bg-amber-500 h-2 rounded-full transition-all duration-500';
+      }
+    }
+
+    function calculateAperturaRows(records) {
+      // Inc 2 Total
+      const sub2Total = records.filter(r => r.inc === 2);
+      // Combustible (2.7.3)
+      const subComb = records.filter(r => r.inc === 2 && r.pp === 7 && r.pparc === 3);
+
+      // Inc 3 Total
+      const sub3Total = records.filter(r => r.inc === 3);
+      // Servicios Basicos (3.1)
+      const subBasicos = records.filter(r => r.inc === 3 && r.pp === 1);
+      // Primas y gastos de seguros (3.5.4)
+      const subSeguros = records.filter(r => r.inc === 3 && r.pp === 5 && r.pparc === 4);
+      // Viaticos (3.7.2)
+      const subViaticos = records.filter(r => r.inc === 3 && r.pp === 7 && r.pparc === 2);
+      // Movilidad (3.7.3)
+      const subMovilidad = records.filter(r => r.inc === 3 && r.pp === 7 && r.pparc === 3);
+
+      // Inc 4 Total
+      const sub4Total = records.filter(r => r.inc === 4);
+
+      // Inc 5 Total
+      const sub5Total = records.filter(r => r.inc === 5);
+      // AMBA (5.1.9.23)
+      const subAmba = records.filter(r => r.inc === 5 && r.pp === 1 && r.pparc === 9 && r.psub === 23);
+      // Interior (5.1.9.24)
+      const subInterior = records.filter(r => r.inc === 5 && r.pp === 1 && r.pparc === 9 && r.psub === 24);
+      // Fluvial (5.1.9.35)
+      const subFluvial = records.filter(r => r.inc === 5 && r.pp === 1 && r.pparc === 9 && r.psub === 35);
+      // Transferencias Corrientes (5.3.2)
+      const subTC = records.filter(r => r.inc === 5 && r.pp === 3 && r.pparc === 2);
+      // PROSEVITRA (5.3.3.50)
+      const subPRO = records.filter(r => r.inc === 5 && r.pp === 3 && r.pparc === 3 && r.psub === 50);
+      // Boleto (5.3.5.25)
+      const subBoleto = records.filter(r => r.inc === 5 && r.pp === 3 && r.pparc === 5 && r.psub === 25);
+      // Concientización de la Seg. vial (5.4.2.918)
+      const subConSG = records.filter(r => r.inc === 5 && r.pp === 4 && r.pparc === 2 && r.psub === 918);
+      // Fondo Municip. (5.4.2.973)
+      const subFondo = records.filter(r => r.inc === 5 && r.pp === 4 && r.pparc === 2 && r.psub === 973);
+      
+
+      const defs = [
+        { code: 'INC2', level: 0, label: '2. Bienes de Consumo', sub: sub2Total },
+        { code: 'COMB', level: 1, label: 'Combustible (2.7.3)', sub: subComb },
+        { code: 'RESTO2', level: 1, label: '2. Resto', calc: 'RESTO2' },
+
+        { code: 'INC3', level: 0, label: '3. Servicios No Personales', sub: sub3Total },
+        { code: 'BAS', level: 1, label: 'Servicios Básicos (3.1)', sub: subBasicos },
+        { code: 'SEG', level: 1, label: 'Primas y gastos de seguros (3.5.4)', sub: subSeguros },
+        { code: 'VIAT', level: 1, label: 'Viáticos (3.7.2)', sub: subViaticos },
+        { code: 'MOV', level: 1, label: 'Movilidad (3.7.3)', sub: subMovilidad },
+        { code: 'RESTO3', level: 1, label: '3. Resto', calc: 'RESTO3' },
+
+        { code: 'INC4', level: 0, label: '4. Bienes de Uso', sub: sub4Total },
+
+        { code: 'INC5', level: 0, label: '5. Transferencias', sub: sub5Total },
+        { code: 'AMBA', level: 1, label: 'AMBA (5.1.9.23)', sub: subAmba },
+        { code: 'INT', level: 1, label: 'Interior (5.1.9.24)', sub: subInterior },
+        { code: 'FLUV', level: 1, label: 'Fluvial (5.1.9.35)', sub: subFluvial },
+        { code: 'TCOR', level: 1, label: 'Transferencias Corrientes (5.3.2)', sub: subTC },
+        { code: 'PRO', level: 1, label: 'PROSEVITRA (5.3.3.50)', sub: subPRO },
+        { code: 'BOL', level: 1, label: 'Boleto Especial Educativo (5.3.5.25)', sub: subBoleto },
+        { code: 'CSGV', level: 1, label: 'Concientizaciónde la Seguridad Vial (5.4.2.918)', sub: subConSG },
+        { code: 'FONDO', level: 1, label: 'Fondo Municipal (5.4.2.973)', sub: subFondo }   
+      ];
+
+      const resDict = {};
+      const result = [];
+
+      defs.forEach(d => {
+        let vig = 0, disp = 0;
+        if (d.calc === 'RESTO2') {
+          const tot = resDict['INC2'];
+          const comb = resDict['COMB'];
+          vig = Math.max(0, tot.vig - comb.vig);
+          disp = Math.max(0, tot.disp - comb.disp);
+        } else if (d.calc === 'RESTO3') {
+          const tot = resDict['INC3'];
+          const bas = resDict['BAS'];
+          const seg = resDict['SEG'];
+          const viat = resDict['VIAT'];
+          const mov = resDict['MOV'];
+          vig = Math.max(0, tot.vig - bas.vig - seg.vig - viat.vig - mov.vig);
+          disp = Math.max(0, tot.disp - bas.disp - seg.disp- viat.disp - mov.disp);        
+        } else {
+          vig = d.sub.reduce((acc, r) => acc + r.vig, 0);
+          disp = d.sub.reduce((acc, r) => acc + r.disp, 0);
+        }
+
+        const ejec = vig - disp;
+        const pct = vig > 0 ? (ejec / vig * 100) : 0;
+        const rowObj = {
+          code: d.code,
+          level: d.level,
+          label: d.label,
+          vig,
+          disp,
+          ejec,
+          pct,
+          isResto: !!d.calc
+        };
+        resDict[d.code] = rowObj;
+        result.push(rowObj);
+      });
+
+      return result;
+    }
+
+    function renderAperturaTable(records) {
+      const rows = calculateAperturaRows(records);
+      const tbody = document.getElementById('table-apertura-body');
+      tbody.innerHTML = '';
+
+      let sumVig = 0, sumDisp = 0;
+      ['INC2', 'INC3', 'INC4', 'INC5'].forEach(code => {
+        const r = rows.find(x => x.code === code);
+        if (r) {
+          sumVig += r.vig;
+          sumDisp += r.disp;
+        }
+      });
+      const sumEjec = sumVig - sumDisp;
+      const sumPct = sumVig > 0 ? (sumEjec / sumVig * 100) : 0;
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        let rowClass = 'hover:bg-slate-50 transition-colors ';
+        let indent = '';
+        let labelClass = 'font-sans text-slate-800';
+        let vigClass = 'font-medium text-slate-800';
+        let dispClass = 'text-emerald-700 font-medium';
+        let ejecClass = 'text-indigo-700 font-semibold';
+
+        if (r.level === 0) {
+          rowClass += 'row-inciso text-slate-900 ';
+          indent = '';
+          labelClass = 'font-sans font-bold text-slate-950 text-xs';
+          vigClass = 'font-bold text-slate-950 text-xs';
+          dispClass = 'font-bold text-emerald-800 text-xs';
+          ejecClass = 'font-bold text-indigo-900 text-xs';
+        } else if (r.level === 1) {
+          if (r.isResto) {
+            rowClass += 'row-resto';
+          } else {
+            rowClass += 'row-subnivel-1';
+          }
+          indent = '<span class="inline-block w-4"></span>↳ ';
+        }
+
+        tr.className = rowClass;
+
+        const pctClamped = Math.min(100, Math.max(0, r.pct));
+        let barColor = 'bg-sky-500';
+        if (r.pct > 80) barColor = 'bg-emerald-500';
+        else if (r.pct < 40) barColor = 'bg-amber-500';
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-4 ${labelClass}">${indent}${r.label}</td>
+          <td class="py-2.5 px-4 text-right ${vigClass}">${fmtMoney(r.vig)}</td>
+          <td class="py-2.5 px-4 text-right ${dispClass}">${fmtMoney(r.disp)}</td>
+          <td class="py-2.5 px-4 text-right ${ejecClass}">${fmtMoney(r.ejec)}</td>
+          <td class="py-2.5 px-4 text-center font-sans">
+            <div class="flex items-center justify-end gap-2">
+              <span class="w-12 text-right ${r.level === 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}">${fmtPct(r.pct)}</span>
+              <div class="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                <div class="${barColor} h-1.5 rounded-full" style="width: ${pctClamped}%"></div>
+              </div>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const tfoot = document.getElementById('table-apertura-foot');
+      tfoot.innerHTML = `
+        <tr class="border-t-2 border-slate-700">
+          <td class="py-3 px-4 font-sans text-white uppercase tracking-wider font-bold">TOTAL APERTURA MTRA (INCISOS 2, 3, 4 y 5)</td>
+          <td class="py-3 px-4 text-right text-white">${fmtMoney(sumVig)}</td>
+          <td class="py-3 px-4 text-right text-emerald-400">${fmtMoney(sumDisp)}</td>
+          <td class="py-3 px-4 text-right text-sky-300">${fmtMoney(sumEjec)}</td>
+          <td class="py-3 px-4 text-center font-sans text-white">${fmtPct(sumPct)}</td>
+        </tr>
+      `;
+    }
+
+    function updateCharts(records) {
+      const rows = calculateAperturaRows(records);
+
+      const incData = [
+        { label: 'Inc. 2 Consumo', code: 'INC2' },
+        { label: 'Inc. 3 Servicios', code: 'INC3' },
+        { label: 'Inc. 4 Bienes Uso', code: 'INC4' },
+        { label: 'Inc. 5 Transferencias', code: 'INC5' }
+      ].map(item => {
+        const r = rows.find(x => x.code === item.code) || { vig: 0, disp: 0, ejec: 0 };
+        return {
+          label: item.label,
+          vig: r.vig / 1000000,
+          disp: r.disp / 1000000,
+          ejec: r.ejec / 1000000
+        };
+      });
+
+      const ctxBar = document.getElementById('chart-incisos').getContext('2d');
+      if (chartIncisosInstance) chartIncisosInstance.destroy();
+
+      chartIncisosInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: incData.map(d => d.label),
+          datasets: [
+            {
+              label: 'Crédito Vigente ($ M)',
+              data: incData.map(d => d.vig),
+              backgroundColor: 'rgba(2, 132, 199, 0.85)',
+              borderRadius: 6,
+            },
+            {
+              label: 'Ejecutado ($ M)',
+              data: incData.map(d => d.ejec),
+              backgroundColor: 'rgba(79, 70, 229, 0.85)',
+              borderRadius: 6,
+            },
+            {
+              label: 'Disponible ($ M)',
+              data: incData.map(d => d.disp),
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 6,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: $ ${ctx.raw.toLocaleString('es-AR', { minimumFractionDigits: 2 })} M`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => `$ ${val.toLocaleString('es-AR')} M`
+              }
+            }
+          }
+        }
+      });
+
+      const ctxDoughnut = document.getElementById('chart-doughnut').getContext('2d');
+      if (chartDoughnutInstance) chartDoughnutInstance.destroy();
+
+      chartDoughnutInstance = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+          labels: incData.map(d => d.label),
+          datasets: [{
+            data: incData.map(d => d.vig),
+            backgroundColor: [
+              '#38bdf8',
+              '#6366f1',
+              '#10b981',
+              '#f59e0b'
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: $ ${ctx.raw.toLocaleString('es-AR', { minimumFractionDigits: 2 })} M`
+              }
+            }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function onSearchInput() {
+      const query = document.getElementById('search-imputaciones').value.toLowerCase().trim();
+      if (!query) {
+        searchFilteredRecords = activeFilteredRecords;
+      } else {
+        searchFilteredRecords = activeFilteredRecords.filter(r => {
+          const desc = (r.desc || '').toLowerCase();
+          const p = String(r.p);
+          const a = String(r.a);
+          const ue = String(r.ue);
+          const incStr = `${r.inc}.${r.pp}.${r.pparc}.${r.psub}`;
+          return desc.includes(query) || p.includes(query) || a.includes(query) || ue.includes(query) || incStr.includes(query);
+        });
+      }
+      currentPage = 1;
+      renderImputacionesTable();
+    }
+
+    function renderImputacionesTable() {
+      const tbody = document.getElementById('table-imputaciones-body');
+      tbody.innerHTML = '';
+
+      const totalItems = searchFilteredRecords.length;
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const pageItems = searchFilteredRecords.slice(startIdx, startIdx + PAGE_SIZE);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400 font-sans">No se encontraron imputaciones para los filtros seleccionados</td></tr>`;
+      } else {
+        pageItems.forEach(r => {
+          const ejec = r.vig - r.disp;
+          const pct = r.vig > 0 ? (ejec / r.vig * 100) : 0;
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition-colors';
+          tr.innerHTML = `
+            <td class="py-2 px-3 font-sans text-slate-700">${r.p}</td>
+            <td class="py-2 px-3 font-sans text-slate-700">${r.a}</td>
+            <td class="py-2 px-3 font-sans text-slate-700">${r.ue}</td>
+            <td class="py-2 px-3 font-mono font-semibold text-slate-900">${r.inc}.${r.pp}.${r.pparc}.${r.psub}</td>
+            <td class="py-2 px-2 text-center text-slate-500 font-sans">${r.ff}</td>
+            <td class="py-2 px-2 text-center text-slate-500 font-sans">${r.rubro || '-'}</td>
+            <td class="py-2 px-3 font-sans text-slate-800 max-w-xs truncate" title="${r.desc}">${r.desc || '-'}</td>
+            <td class="py-2 px-3 text-right font-medium text-slate-800">${fmtMoney(r.vig)}</td>
+            <td class="py-2 px-3 text-right text-emerald-700">${fmtMoney(r.disp)}</td>
+            <td class="py-2 px-3 text-right text-indigo-700 font-semibold">${fmtMoney(ejec)}</td>
+            <td class="py-2 px-3 text-center font-sans font-semibold text-slate-700">${fmtPct(pct)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+      const paginationDiv = document.getElementById('imputaciones-pagination');
+      paginationDiv.innerHTML = `
+        <div>Mostrando ${totalItems > 0 ? startIdx + 1 : 0} a ${Math.min(startIdx + PAGE_SIZE, totalItems)} de ${totalItems} imputaciones</div>
+        <div class="flex items-center gap-2">
+          <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:text-sky-600"'}>
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <span>Página ${currentPage} de ${totalPages}</span>
+          <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:text-sky-600"'}>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderImputacionesTable();
+    }
+
+    function exportToExcel() {
+      const rows = calculateAperturaRows(activeFilteredRecords);
+      const data = [
+        ['MINISTERIO DE TRANSPORTE (MTRA) - TABLERO PRESUPUESTARIO 2026'],
+        ['Fecha de Corte:', DB.fechaCorte],
+        ['Filtro Activo:', document.getElementById('filter-active-desc').textContent],
+        [],
+        ['Inciso / Partida / Concepto', 'Crédito Vigente', 'Crédito Disponible', 'Ejecutado', '% Ejecución']
+      ];
+
+      rows.forEach(r => {
+        data.push([
+          r.label,
+          r.vig,
+          r.disp,
+          r.ejec,
+          (r.pct / 100)
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Apertura_MTRA');
+      XLSX.writeFile(wb, `Apertura_MTRA_${Date.now()}.xlsx`);
+    }
+
+    function exportImputacionesExcel() {
+      const data = [
+        ['Programa', 'Actividad', 'Unidad Ejecutora', 'Inciso', 'Partida Principal', 'Partida Parcial', 'Subparcial', 'Fuente Fin.', 'Rubro Afectado', 'Descripción', 'Vigente', 'Disponible', 'Ejecutado', '% Ejecución']
+      ];
+
+      searchFilteredRecords.forEach(r => {
+        const ejec = r.vig - r.disp;
+        const pct = r.vig > 0 ? (ejec / r.vig) : 0;
+        data.push([
+          r.p, r.a, r.ue, r.inc, r.pp, r.pparc, r.psub, r.ff, r.rubro, r.desc, r.vig, r.disp, ejec, pct
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Imputaciones_MTRA');
+      XLSX.writeFile(wb, `Imputaciones_MTRA_${Date.now()}.xlsx`);
+    }
+
+    // Endpoint de Google Apps Script que ya funciona con este tablero.
+    const API_URL = "https://script.google.com/macros/s/AKfycbz4ZovqIkXDef3-dKwQRuuhY3ywGkafX91CR1PbqG8O-GgNlqw06vYUGNZG1FCN1l95/exec";
+
+    // Carga de datos exclusivamente desde Google Sheets mediante Apps Script.
+    async function actualizarDesdeGoogleSheets() {
+      const button = document.getElementById('btn-refresh-sheets');
+      const label = button?.querySelector('span');
+      const icon = button?.querySelector('i');
+
+      if (button) {
+        button.disabled = true;
+        button.classList.add('opacity-70', 'cursor-wait');
+      }
+      if (label) label.textContent = 'Actualizando...';
+      if (icon) icon.classList.add('animate-spin');
+
+      showToast('Conectando con Google Sheets...', 'info');
+      document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+
+      try {
+        // Se utiliza exactamente el endpoint /exec del Apps Script que funcionaba
+        // en el otro dashboard, en lugar del endpoint googleusercontent /echo.
+        const response = await fetch(API_URL, {
+          method: 'GET',
+          cache: 'no-store'
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error en la respuesta de la API: HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // La API puede devolver directamente un array de filas o un objeto
+        // con records y metadatos.
+        let rows;
+        if (Array.isArray(data)) {
+          rows = data;
+        } else if (data && Array.isArray(data.records)) {
+          rows = data.records;
+        } else {
+          throw new Error('La API no devolvió un array de registros válido.');
+        }
+
+        DB.records = parseApiRows(rows);
+
+        // Conservamos los metadatos si la API los devuelve.
+        if (data && !Array.isArray(data)) {
+          if (data.ministerio) DB.ministerio = data.ministerio;
+          if (data.sigla) DB.sigla = data.sigla;
+          if (data.fechaCorte) DB.fechaCorte = data.fechaCorte;
+          if (data.programas && typeof data.programas === 'object') DB.programas = data.programas;
+          if (Array.isArray(data.actividades)) DB.actividades = data.actividades;
+          if (data.unidadesEjecutoras && typeof data.unidadesEjecutoras === 'object') {
+            DB.unidadesEjecutoras = data.unidadesEjecutoras;
+          }
+        }
+
+        // Si la API devuelve solamente las filas, reconstruimos los catálogos
+        // que necesita el tablero a partir de los registros.
+        construirCatalogosDesdeRegistros();
+
+        if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
+          DB.fechaCorte = new Date().toLocaleString('es-AR');
+        }
+
+        document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
+
+        populateFilterOptions();
+        resetFilters();
+
+        showToast(
+          `Datos actualizados exitosamente desde Google Sheets: ${DB.records.length} registros.`,
+          'success'
+        );
+      } catch (error) {
+        console.error('Error al obtener datos de Google Sheets:', error);
+        document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
+        showToast(
+          'Error al conectar con Google Sheets. Verifique los datos o permisos de la API.',
+          'error'
+        );
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.classList.remove('opacity-70', 'cursor-wait');
+        }
+        if (label) label.textContent = 'Actualizar desde Google Sheets';
+        if (icon) icon.classList.remove('animate-spin');
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+
+    // Normaliza las filas de Google Sheets para que el resto del dashboard
+    // trabaje siempre con la estructura interna esperada.
+    function parseApiRows(rows) {
+      return rows.map(r => ({
+        p: Number(r.p ?? r.programa ?? 0),
+        a: Number(r.a ?? r.actividad ?? 0),
+        ue: Number(r.ue ?? r.unidad_ejecutora ?? 0),
+        inc: Number(r.inc ?? r.inciso ?? 0),
+        pp: Number(r.pp ?? r.partida_principal ?? 0),
+        pparc: Number(r.pparc ?? r.partida_parcial ?? 0),
+        psub: Number(r.psub ?? r.partida_subparcial ?? 0),
+        ff: Number(r.ff ?? r.fuente ?? 0),
+        rubro: Number(r.rubro ?? 0),
+        desc: String(r.desc ?? r.descripcion ?? 'Sin Descripción'),
+        vig: parseFloat(r.vig ?? r.vigente ?? 0) || 0,
+        disp: parseFloat(r.disp ?? r.disponible ?? 0) || 0,
+        prev: parseFloat(r.prev ?? r.preventivo ?? 0) || 0,
+        def: parseFloat(r.def ?? r.definitivo ?? 0) || 0,
+        dev: parseFloat(r.dev ?? r.devengado ?? 0) || 0,
+        pag: parseFloat(r.pag ?? r.pagado ?? 0) || 0
+      }));
+    }
+
+    function construirCatalogosDesdeRegistros() {
+      // Programas: si no vinieron desde la API, generamos las opciones a
+      // partir de los programas existentes en los registros.
+      if (!DB.programas || typeof DB.programas !== 'object') DB.programas = {};
+
+      const programasEnRegistros = [...new Set(DB.records.map(r => r.p).filter(Number.isFinite))];
+      programasEnRegistros.forEach(p => {
+        if (DB.programas[p] === undefined || DB.programas[p] === null || DB.programas[p] === '') {
+          DB.programas[p] = `Programa ${p}`;
+        }
+      });
+
+      // Actividades: si no fueron suministradas por la API, generamos una
+      // actividad por combinación Programa/Actividad/UE para mantener el
+      // filtro de actividad operativo.
+      if (!Array.isArray(DB.actividades) || DB.actividades.length === 0) {
+        const mapa = new Map();
+        DB.records.forEach(r => {
+          const key = `${r.p}|${r.a}|${r.ue}`;
+          if (!mapa.has(key)) {
+            mapa.set(key, {
+              programa: r.p,
+              actividad: r.a,
+              ue: r.ue,
+              nombre: `Actividad ${r.a}`
+            });
+          }
+        });
+        DB.actividades = [...mapa.values()].sort((x, y) =>
+          x.programa - y.programa || x.actividad - y.actividad || x.ue - y.ue
+        );
+      }
+
+      if (!DB.unidadesEjecutoras || typeof DB.unidadesEjecutoras !== 'object') {
+        DB.unidadesEjecutoras = {};
+      }
+    }
+
+    function showToast(msg, type) {
+      const banner = document.getElementById('toast-banner');
+      banner.className = `rounded-xl p-4 text-sm font-semibold flex items-center justify-between transition-all shadow-md ${
+        type === 'success' ? 'bg-emerald-500 text-white' :
+        type === 'error' ? 'bg-rose-500 text-white' :
+        'bg-sky-600 text-white'
+      }`;
+      banner.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info'}" class="w-5 h-5"></i>
+          <span>${msg}</span>
+        </div>
+        <button onclick="this.parentElement.classList.add('hidden')" class="hover:opacity-80">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      `;
+      banner.classList.remove('hidden');
+      lucide.createIcons();
+      setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 6000);
+    }
+  </script>
+</body>
+</html>
