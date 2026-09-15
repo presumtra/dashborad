@@ -44,8 +44,12 @@
           </div>
           <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
             <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-400"></i>
-            <span>Fecha de corte:</span>
+            <span>Fechas de corte &nbsp</span>
+            <span>Parametrizado:</span>
             <span id="label-fecha-corte" class="font-semibold text-sky-300">Cargando...</span>
+            <span class="mx-1 text-slate-600">|</span>
+            <span>Recursos:</span>
+            <span id="label-fecha-corte-recursos" class="font-semibold text-emerald-300">Cargando...</span>
           </p>
         </div>
       </div>
@@ -73,11 +77,11 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2 space-y-2">
 
     <!-- NOTIFICATION / TOAST -->
-    <div id="toast-banner" class="hidden rounded-lg p-3 text-sm flex items-center justify-between transition-all"></div>
+    <div id="toast-banner" class="hidden rounded-lg p-2 text-sm flex items-center justify-between transition-all"></div>
 
     <!-- FILTER PANEL -->
     <section class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80">
-      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+      <div class="flex items-center justify-between pb-2 mb-4 border-b border-slate-100">
         <div class="flex items-center gap-2 text-slate-700 font-semibold text-sm">
           <i data-lucide="sliders-horizontal" class="w-4 h-4 text-sky-600"></i>
           <span>Filtros de Análisis Presupuestario</span>
@@ -88,14 +92,14 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         <!-- Programa Filter -->
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
             <i data-lucide="folder-tree" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>1. Programa Presupuestario</span>
           </label>
-          <select id="select-programa" onchange="onProgramaChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+          <select id="select-programa" onchange="onProgramaChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todos los Programas</option>
           </select>
         </div>
@@ -106,7 +110,7 @@
             <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>2. Actividad / Unidad Ejecutora</span>
           </label>
-          <select id="select-actividad" onchange="onActividadChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+          <select id="select-actividad" onchange="onActividadChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todas las Actividades</option>
           </select>
         </div>
@@ -117,7 +121,7 @@
             <i data-lucide="coins" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>3. Fuente de Financiamiento</span>
           </label>
-          <select id="select-ff" onchange="onFuenteFinanciamientoChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+          <select id="select-ff" onchange="onFuenteFinanciamientoChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todas las Fuentes</option>
             <option value="11">FF 11 - Rentas Generales</option>
             <option value="13">FF 13 - Recursos con afactación específica</option>
@@ -130,7 +134,7 @@
             <i data-lucide="tag" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>4. Rubro Afectado</span>
           </label>
-          <select id="select-rubro" onchange="actualizarIncisosDisponibles(); applyFilters()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+          <select id="select-rubro" onchange="actualizarIncisosDisponibles(); applyFilters()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todos los Rubros</option>
           </select>
         </div>
@@ -146,7 +150,7 @@
             <span>5. Filtros adicionales</span>
           </label>
           <select id="select-filtros-adicionales" onchange="onFiltrosAdicionalesChange()"
-            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="NINGUNO">Ninguno</option>
             <option value="SIN_TRANSFERENCIAS">Sin Transferencias</option>
             <option value="SIN_PROSEVITRA">Sin PROSEVITRA</option>
@@ -160,7 +164,7 @@
             <span>6. Incisos</span>
           </label>
           <select id="select-inciso" onchange="applyFilters()"
-            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todos los Incisos</option>
             <option value="2">2 - Bienes de Consumo</option>
             <option value="3">3 - Servicios No Personales</option>
@@ -176,7 +180,7 @@
             <span>7. Control de CUPO</span>
           </label>
           <select id="select-cupo" onchange="applyFilters()"
-            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+            class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
             <option value="ALL">Todos</option>
             <option value="SI">Sí</option>
             <option value="NO">No</option>
@@ -197,7 +201,7 @@
 
     <!-- KPI CARDS -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+      <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
         <div class="flex items-center justify-between text-slate-500 mb-2">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Crédito Vigente</span>
           <div class="p-2 bg-sky-50 text-sky-600 rounded-xl">
@@ -211,11 +215,11 @@
         <div class="absolute bottom-0 left-0 right-0 h-1 bg-sky-500"></div>
       </div>
 
-      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+      <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
         <div class="flex items-center justify-between text-slate-500 mb-2">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Crédito Disponible</span>
           <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-            <i data-lucide="check-circle" class="w-5 h-5"></i>
+            <i data-lucide="banknote-check" class="w-5 h-5"></i>
           </div>
         </div>
         <div>
@@ -225,7 +229,7 @@
         <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
       </div>
 
-      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+      <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
         <div class="flex items-center justify-between text-slate-500 mb-2">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Ejecutado</span>
           <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
@@ -239,7 +243,7 @@
         <div class="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500"></div>
       </div>
 
-      <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+      <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
         <div class="flex items-center justify-between text-slate-500 mb-2">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">% de Ejecución</span>
           <div id="kpi-pct-icon-bg" class="p-2 bg-amber-50 text-amber-600 rounded-xl">
@@ -362,6 +366,151 @@
       <div id="imputaciones-pagination" class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500"></div>
     </section>
 
+    <!-- SECCIÓN RECURSOS -->
+    <section class="bg-gradient-to-b from-[#237583] to-[#1ca6b7] rounded-2xl shadow-sm p-5 space-y-5">
+      <div class="flex items-center gap-2">
+        <i data-lucide="landmark" class="w-5 h-5 text-emerald-400"></i>
+        <h2 class="text-base font-bold text-white">Recursos Ministerio de Transporte</h2>
+      </div>
+
+      <!-- Filtros de Recursos -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white/5 rounded-xl p-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-100 mb-1.5 flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-200"></i>
+            <span>Desde</span>
+          </label>
+          <input type="date" id="rec-fecha-desde" onchange="applyFiltersRecursos()" class="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-100 mb-1.5 flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-200"></i>
+            <span>Hasta</span>
+          </label>
+          <input type="date" id="rec-fecha-hasta" onchange="applyFiltersRecursos()" class="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-100 mb-1.5 flex items-center gap-1">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-200"></i>
+            <span>Afectación de los Recursos</span>
+          </label>
+          <select id="rec-select-destino" onchange="applyFiltersRecursos()" class="w-full bg-white border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+            <option value="ALL">Todo</option>
+            <option value="Ministerio">Ministerio de Transporte</option>
+            <option value="PROSEVITRA">PROSEVITRA</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button onclick="resetFiltersRecursos()" class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Restablecer</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards de Recursos -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Licencias (RA 133)</span>
+            <div class="p-2 bg-sky-50 text-[#178e9f] rounded-xl"><i data-lucide="id-card" class="w-5 h-5"></i></div>
+          </div>
+          <div>
+            <div id="rec-kpi-licencias" class="text-2xl font-black text-[#178e9f] tracking-tight">$ 0,00</div>
+            <div class="text-xs text-slate-400 mt-1">Total LICENCIAS</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#178e9f]"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Multas Ministerio (RA 134)</span>
+            <div class="p-2 bg-purple-50 text-[#751655] rounded-xl"><i data-lucide="gavel" class="w-5 h-5"></i></div>
+          </div>
+          <div>
+            <div id="rec-kpi-multas-min" class="text-2xl font-black text-[#751655] tracking-tight">$ 0,00</div>
+            <div class="text-xs text-slate-400 mt-1">Total MULTAS afectación MTRA</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#751655]"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Multas PROSEVITRA (RA 134)</span>
+            <div class="p-2 bg-emerald-50 text-[#10b981] rounded-xl"><i data-lucide="road" class="w-5 h-5"></i></div>
+          </div>
+          <div>
+            <div id="rec-kpi-multas-pro" class="text-2xl font-black text-[#10b981] tracking-tight">$ 0,00</div>
+            <div class="text-xs text-slate-400 mt-1">Total MULTAS afectación PROSEVITRA</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-[#10b981]"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Recaudación Total</span>
+            <div class="p-2 bg-zinc-50 text-black rounded-xl"><i data-lucide="hand-coins" class="w-5 h-5"></i></div>
+          </div>
+          <div>
+            <div id="rec-kpi-total" class="text-2xl font-black text-black tracking-tight">$ 0,00</div>
+            <div class="text-xs text-slate-400 mt-1">Total Recursos Fuente 13</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-black"></div>
+        </div>
+      </div>
+
+      <!-- Gráficos de Recursos -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl p-5 shadow-sm lg:col-span-2 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="bar-chart-3" class="w-4 h-4 text-sky-600"></i>
+              <h3 class="text-sm font-bold text-slate-800">Recaudación Mensual por Recurso</h3>
+            </div>
+            <span class="text-xs text-slate-400">Valores en millones ($)</span>
+          </div>
+          <div class="flex-1 relative min-h-[260px]">
+            <canvas id="chart-recursos-mensual"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i>
+              <h3 class="text-sm font-bold text-slate-800">Distribución de la Recaudación</h3>
+            </div>
+          </div>
+          <div class="flex-1 relative min-h-[260px] flex items-center justify-center">
+            <canvas id="chart-recursos-doughnut"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla Estructura Oficial de Recursos -->
+      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-200/80 bg-slate-50/50">
+          <h2 class="text-base font-bold text-slate-900">Ejecución Presupuestaria de Recursos MTRA</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Vigente y Devengado obtenidos del parametrizado presupuestario &middot; Recaudación según los recursos ingresados en el período filtrado</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/90 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                <th class="py-3 px-4">Concepto</th>
+                <th class="py-3 px-4 text-right">Vigente</th>
+                <th class="py-3 px-4 text-right text-emerald-900">Recaudación</th>
+                <th class="py-3 px-4 text-right text-indigo-900">Devengado</th>
+                <th class="py-3 px-4 text-center">% Recaudación / Vigente</th>
+                <th class="py-3 px-4 text-right">Disponible para Devengar</th>
+              </tr>
+            </thead>
+            <tbody id="table-recaudacion-body" class="divide-y divide-slate-200/60 font-mono text-[11px]"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>    
+
   </main>
 
   <!-- FOOTER -->
@@ -408,6 +557,23 @@
       return Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
     };
 
+    function formatearFechaCorte(fecha) {
+      if (!fecha) return 'Sin fecha';
+
+    // Si viene como YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      const [anio, mes, dia] = fecha.split('-');
+      return `${dia}/${mes}/${anio}`;
+      }
+
+    // Si ya viene como DD/MM/YYYY, no modificarla
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
+        return fecha;
+      }
+
+      return fecha;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       initApp();
@@ -415,6 +581,7 @@
 
     async function initApp() {
       document.getElementById('label-fecha-corte').textContent = 'Actualizando...';
+      document.getElementById('label-fecha-corte-recursos').textContent = 'Actualizando...';
       await actualizarDesdeGoogleSheets();
     }
 
@@ -946,13 +1113,13 @@
             {
               label: 'Crédito Vigente ($ M)',
               data: incData.map(d => d.vig),
-              backgroundColor: 'rgba(2, 132, 199, 0.85)',
+              backgroundColor: 'rgba(117, 22, 85, 0.85)',
               borderRadius: 6,
             },
             {
               label: 'Ejecutado ($ M)',
               data: incData.map(d => d.ejec),
-              backgroundColor: 'rgba(79, 70, 229, 0.85)',
+              backgroundColor: 'rgba(23, 142, 159, 0.85)',
               borderRadius: 6,
             },
             {
@@ -1138,10 +1305,23 @@
       XLSX.writeFile(wb, `Imputaciones_MTRA_${Date.now()}.xlsx`);
     }
 
-    // Endpoint de Google Apps Script que ya funciona con este tablero.
-    const API_URL = "https://script.google.com/macros/s/AKfycbz4ZovqIkXDef3-dKwQRuuhY3ywGkafX91CR1PbqG8O-GgNlqw06vYUGNZG1FCN1l95/exec";
+    // ================================================================
+    // CONEXIÓN CON GOOGLE SHEETS
+    // ================================================================
+    // Endpoint existente del parametrizado.
+    const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbz4ZovqIkXDef3-dKwQRuuhY3ywGkafX91CR1PbqG8O-GgNlqw06vYUGNZG1FCN1l95/exec";
 
-    // Carga de datos exclusivamente desde Google Sheets mediante Apps Script.
+    // Endpoint del Apps Script que genera el JSON de la hoja "recursos".
+    // Se utiliza exactamente la URL suministrada.
+    const API_RECURSOS_URL = "https://script.google.com/macros/s/AKfycbxxNeSIlaQjhwuzlGDtx2ntdnLZhzmryPFJBy-aDPJqrpMJqcRGm58AnijO-Q_KSXl4/exec";
+
+    /**
+     * Actualiza las DOS fuentes:
+     *   1) parametrizado
+     *   2) recursos
+     *
+     * El botón queda como único punto de actualización del tablero.
+     */
     async function actualizarDesdeGoogleSheets() {
       const button = document.getElementById('btn-refresh-sheets');
       const label = button?.querySelector('span');
@@ -1154,72 +1334,121 @@
       if (label) label.textContent = 'Actualizando...';
       if (icon) icon.classList.add('animate-spin');
 
-      showToast('Conectando con Google Sheets...', 'info');
+      showToast('Actualizando parametrizado y recursos desde Google Sheets...', 'info');
       document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+      document.getElementById('label-fecha-corte-recursos').innerText = 'Cargando...';
 
       try {
-        // Se utiliza exactamente el endpoint /exec del Apps Script que funcionaba
-        // en el otro dashboard, en lugar del endpoint googleusercontent /echo.
-        const response = await fetch(API_URL, {
-          method: 'GET',
-          cache: 'no-store'
-        });
+        // Las dos consultas son independientes y se realizan en paralelo.
+        const [responseParam, responseRecursos] = await Promise.all([
+          fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+            method: 'GET',
+            cache: 'no-store'
+          }),
+          fetch(API_RECURSOS_URL + (API_RECURSOS_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+            method: 'GET',
+            cache: 'no-store'
+          })
+        ]);
 
-        if (!response.ok) {
-          throw new Error(`Error en la respuesta de la API: HTTP ${response.status}`);
+        if (!responseParam.ok) {
+          throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
         }
 
-        const data = await response.json();
+        if (!responseRecursos.ok) {
+          throw new Error(`Error en recursos: HTTP ${responseRecursos.status}`);
+        }
 
-        // La API puede devolver directamente un array de filas o un objeto
-        // con records y metadatos.
-        let rows;
-        if (Array.isArray(data)) {
-          rows = data;
-        } else if (data && Array.isArray(data.records)) {
-          rows = data.records;
+        const [dataParam, dataRecursos] = await Promise.all([
+          responseParam.json(),
+          responseRecursos.json()
+        ]);
+
+        // ------------------------------------------------------------
+        // PARAMETRIZADO
+        // ------------------------------------------------------------
+        let rowsParam;
+        if (Array.isArray(dataParam)) {
+          rowsParam = dataParam;
+        } else if (dataParam && Array.isArray(dataParam.records)) {
+          rowsParam = dataParam.records;
         } else {
-          throw new Error('La API no devolvió un array de registros válido.');
+          throw new Error('El parametrizado no devolvió un array de registros válido.');
         }
 
-        DB.records = parseApiRows(rows);
+        DB.records = parseApiRows(rowsParam);
 
-        // Conservamos los metadatos si la API los devuelve.
-        if (data && !Array.isArray(data)) {
-          if (data.ministerio) DB.ministerio = data.ministerio;
-          if (data.sigla) DB.sigla = data.sigla;
-          if (data.fechaCorte) DB.fechaCorte = data.fechaCorte;
-          if (data.programas && typeof data.programas === 'object') DB.programas = data.programas;
-          if (Array.isArray(data.actividades)) DB.actividades = data.actividades;
-          if (data.unidadesEjecutoras && typeof data.unidadesEjecutoras === 'object') {
-            DB.unidadesEjecutoras = data.unidadesEjecutoras;
+        if (dataParam && !Array.isArray(dataParam)) {
+          if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
+          if (dataParam.sigla) DB.sigla = dataParam.sigla;
+          if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
+          if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
+          if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
+          if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
+            DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
           }
         }
 
-        // Si la API devuelve solamente las filas, reconstruimos los catálogos
-        // que necesita el tablero a partir de los registros.
         construirCatalogosDesdeRegistros();
 
         if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
-          DB.fechaCorte = new Date().toLocaleString('es-AR');
+          DB.fechaCorte = new Date().toLocaleDateString('es-AR');
         }
 
         document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
 
+        // ------------------------------------------------------------
+        // RECURSOS
+        // ------------------------------------------------------------
+        if (!dataRecursos || !Array.isArray(dataRecursos.records)) {
+          throw new Error('El Apps Script de recursos no devolvió un objeto con records[].');
+        }
+
+        // Eliminamos únicamente filas que no tengan recurso. El JSON actual
+        // contiene al final una fila agregada sin recurso que no debe entrar
+        // en los gráficos ni KPIs.
+        RECURSOS = dataRecursos.records.filter(r =>
+          r && String(r.recurso || '').trim() !== ''
+        ).map(normalizarRegistroRecurso);
+
+        const fechaRecursos =
+          dataRecursos.fechaActualizacion ||
+          dataRecursos.fechaCorte ||
+          obtenerFechaMaximaRecursos(RECURSOS);
+
+        document.getElementById('label-fecha-corte-recursos').innerText =
+          formatearFechaCorte(fechaRecursos);
+
+        // La estructura presupuestaria de Recursos utiliza los datos del
+        // parametrizado, mientras que la recaudación y sus gráficos utilizan
+        // exclusivamente el JSON de recursos.
+        calcularEstructuraRecursosDesdeParametrizado();
+
         populateFilterOptions();
         resetFilters();
 
+        // Inicializar la sección Recursos con todos los registros.
+        resetFiltersRecursos();
+
+        const totalParam = DB.records.length;
+        const totalRecursos = RECURSOS.length;
+
         showToast(
-          `Datos actualizados exitosamente desde Google Sheets: ${DB.records.length} registros.`,
+          `Actualización completa: ${totalParam.toLocaleString('es-AR')} registros parametrizados y ${totalRecursos.toLocaleString('es-AR')} registros de recursos.`,
           'success'
         );
+
       } catch (error) {
-        console.error('Error al obtener datos de Google Sheets:', error);
+        console.error('Error al actualizar desde Google Sheets:', error);
+
         document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
+        document.getElementById('label-fecha-corte-recursos').innerText = 'Error de conexión';
+
         showToast(
-          'Error al conectar con Google Sheets. Verifique los datos o permisos de la API.',
+          'No se pudieron actualizar ambas fuentes: ' + error.message,
           'error'
         );
+
       } finally {
         if (button) {
           button.disabled = false;
@@ -1314,6 +1543,226 @@
         banner.classList.add('hidden');
       }, 6000);
     }
+
+    // ---- SECCIÓN RECURSOS Y RECAUDACIÓN ----
+    let RECURSOS = null;
+    let RECURSOS_ESTRUCTURA = null;
+    let chartRecursosMensualInstance = null;
+    let chartRecursosDoughnutInstance = null;
+
+    function normalizarRegistroRecurso(r) {
+      return {
+        recurso: String(r.recurso || '').trim(),
+        destino: String(r.destino || 'Ministerio').trim(),
+        fecha: normalizarFechaRecurso(r.fecha),
+        cuentaBancaria: String(r.cuentaBancaria ?? '').trim(),
+        fuente: String(r.fuente ?? '').trim(),
+        rubroAfectado: String(r.rubroAfectado ?? '').trim(),
+        operacion: String(r.operacion ?? '').trim(),
+        importe: Number(r.importe) || 0
+      };
+    }
+
+    function normalizarFechaRecurso(valor) {
+      if (!valor) return '';
+      const s = String(valor).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+      // Soporta DD/MM/YYYY por compatibilidad.
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+      }
+      return s;
+    }
+
+    function obtenerFechaMaximaRecursos(records) {
+      const fechas = records
+        .map(r => r.fecha)
+        .filter(f => /^\d{4}-\d{2}-\d{2}$/.test(f))
+        .sort();
+      return fechas.length ? fechas[fechas.length - 1] : '';
+    }
+
+    // Vigente/Devengado son estructurales (vienen del parametrizado, no dependen de los filtros de fecha/destino)
+    function calcularEstructuraRecursosDesdeParametrizado() {
+      const r133 = DB.records.filter(r => r.rubro === 133);
+      const r134 = DB.records.filter(r => r.rubro === 134);
+      const esProsevitra = r => r.inc === 5 && r.pp === 3 && r.pparc === 3 && r.psub === 50;
+      const r134pro = r134.filter(esProsevitra);
+      const r134min = r134.filter(r => !esProsevitra(r));
+      const suma = (lst, campo) => lst.reduce((acc, r) => acc + r[campo], 0);
+
+      RECURSOS_ESTRUCTURA = {
+        licencias: { vig: suma(r133, 'vig'), dev: suma(r133, 'dev') },
+        multasMin: { vig: suma(r134min, 'vig'), dev: suma(r134min, 'dev') },
+        multasPro: { vig: suma(r134pro, 'vig'), dev: suma(r134pro, 'dev') }
+      };
+    }
+
+    function getRecursosFiltrados() {
+      const desde = document.getElementById('rec-fecha-desde').value;
+      const hasta = document.getElementById('rec-fecha-hasta').value;
+      const destino = document.getElementById('rec-select-destino').value;
+
+      return RECURSOS.filter(r => {
+        if (desde && r.fecha < desde) return false;
+        if (hasta && r.fecha > hasta) return false;
+        if (destino !== 'ALL' && r.destino !== destino) return false;
+        return true;
+      });
+    }
+
+    function resetFiltersRecursos() {
+      document.getElementById('rec-fecha-desde').value = '';
+      document.getElementById('rec-fecha-hasta').value = '';
+      document.getElementById('rec-select-destino').value = 'ALL';
+      applyFiltersRecursos();
+    }
+
+    function applyFiltersRecursos() {
+      if (!Array.isArray(RECURSOS)) return;
+      if (!RECURSOS_ESTRUCTURA) calcularEstructuraRecursosDesdeParametrizado();
+      const filtrados = getRecursosFiltrados();
+
+      const licencias = filtrados.filter(r => r.recurso === 'TASA POR SERVICIOS -').reduce((a, r) => a + r.importe, 0);
+      const multasMin = filtrados.filter(r => r.recurso === 'LEY 13.927 - CODIGO' && r.destino === 'Ministerio').reduce((a, r) => a + r.importe, 0);
+      const multasPro = filtrados.filter(r => r.recurso === 'LEY 13.927 - CODIGO' && r.destino === 'PROSEVITRA').reduce((a, r) => a + r.importe, 0);
+      const total = licencias + multasMin + multasPro;
+
+      document.getElementById('rec-kpi-licencias').textContent = fmtMoney(licencias);
+      document.getElementById('rec-kpi-multas-min').textContent = fmtMoney(multasMin);
+      document.getElementById('rec-kpi-multas-pro').textContent = fmtMoney(multasPro);
+      document.getElementById('rec-kpi-total').textContent = fmtMoney(total);
+
+      renderChartsRecursos(filtrados, { licencias, multasMin, multasPro });
+      renderTablaRecaudacion({ licencias, multasMin, multasPro, total });
+    }
+
+    function renderChartsRecursos(filtrados, totales) {
+      const porMes = {};
+      filtrados.forEach(r => {
+        const mes = r.fecha.slice(0, 7);
+        if (!porMes[mes]) porMes[mes] = { licencias: 0, multasMin: 0, multasPro: 0 };
+        if (r.recurso === 'TASA POR SERVICIOS -') porMes[mes].licencias += r.importe;
+        else if (r.recurso === 'LEY 13.927 - CODIGO' && r.destino === 'Ministerio') porMes[mes].multasMin += r.importe;
+        else if (r.recurso === 'LEY 13.927 - CODIGO' && r.destino === 'PROSEVITRA') porMes[mes].multasPro += r.importe;
+      });
+      const meses = Object.keys(porMes).sort();
+      const nombresCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const labelsMeses = meses.map(m => {
+        const [y, mm] = m.split('-');
+        return `${nombresCortos[Number(mm) - 1]} ${y}`;
+      });
+
+      const ctxBar = document.getElementById('chart-recursos-mensual').getContext('2d');
+      if (chartRecursosMensualInstance) chartRecursosMensualInstance.destroy();
+      chartRecursosMensualInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: labelsMeses,
+          datasets: [
+            { label: 'Licencias', data: meses.map(m => porMes[m].licencias / 1000000), backgroundColor: 'rgba(23, 142, 159, 0.85)', borderRadius: 6 },
+            { label: 'Multas Ministerio', data: meses.map(m => porMes[m].multasMin / 1000000), backgroundColor: 'rgba(117, 22, 85, 0.85)', borderRadius: 6 },
+            { label: 'Multas PROSEVITRA', data: meses.map(m => porMes[m].multasPro / 1000000), backgroundColor: 'rgba(16, 185, 129, 0.85)', borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $ ${ctx.raw.toLocaleString('es-AR', { minimumFractionDigits: 2 })} M` } }
+          },
+          scales: { y: { beginAtZero: true, ticks: { callback: (val) => `$ ${val.toLocaleString('es-AR')} M` } } }
+        }
+      });
+
+      const ctxDoughnut = document.getElementById('chart-recursos-doughnut').getContext('2d');
+      if (chartRecursosDoughnutInstance) chartRecursosDoughnutInstance.destroy();
+      chartRecursosDoughnutInstance = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Licencias', 'Multas Ministerio', 'Multas PROSEVITRA'],
+          datasets: [{
+            data: [totales.licencias, totales.multasMin, totales.multasPro],
+            backgroundColor: ['#178e9f', '#751655', '#10b981'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: $ ${ctx.raw.toLocaleString('es-AR', { minimumFractionDigits: 2 })}` } }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function renderTablaRecaudacion(totales) {
+      const e = RECURSOS_ESTRUCTURA;
+      const filas = [
+        {
+          nombre: 'Recaudación Total',
+          vig: e.licencias.vig + e.multasMin.vig + e.multasPro.vig,
+          rec: totales.total,
+          dev: e.licencias.dev + e.multasMin.dev + e.multasPro.dev,
+          nivel: 0
+        },
+        {
+          nombre: 'Recaudación Licencias',
+          vig: e.licencias.vig,
+          rec: totales.licencias,
+          dev: e.licencias.dev,
+          nivel: 1
+        },
+        {
+          nombre: 'Recaudación Multas',
+          vig: e.multasMin.vig + e.multasPro.vig,
+          rec: totales.multasMin + totales.multasPro,
+          dev: e.multasMin.dev + e.multasPro.dev,
+          nivel: 1
+        },
+        {
+          nombre: 'Multas Afectación Ministerio',
+          vig: e.multasMin.vig,
+          rec: totales.multasMin,
+          dev: e.multasMin.dev,
+          nivel: 2
+        },
+        {
+          nombre: 'Multas Afectación PROSEVITRA',
+          vig: e.multasPro.vig,
+          rec: totales.multasPro,
+          dev: e.multasPro.dev,
+          nivel: 2
+        }
+      ];
+
+      const tbody = document.getElementById('table-recaudacion-body');
+      tbody.innerHTML = filas.map(f => {
+        const pct = f.vig > 0 ? (f.rec / f.vig) * 100 : 0;
+        const disponible = f.rec - f.dev;
+        const indentClass = f.nivel === 0 ? '' : (f.nivel === 1 ? 'pl-7' : 'pl-12');
+        const rowClass = f.nivel === 0 ? 'font-bold bg-slate-50' : (f.nivel === 1 ? 'font-semibold' : 'text-slate-600');
+        const dispClass = disponible < 0 ? 'text-rose-600' : 'text-slate-700';
+        return `
+          <tr class="${rowClass}">
+            <td class="py-2 px-4 ${indentClass}">${f.nombre}</td>
+            <td class="py-2 px-4 text-right">${fmtMoney(f.vig)}</td>
+            <td class="py-2 px-4 text-right text-emerald-700">${fmtMoney(f.rec)}</td>
+            <td class="py-2 px-4 text-right text-indigo-700">${fmtMoney(f.dev)}</td>
+            <td class="py-2 px-4 text-center">${fmtPct(pct)}</td>
+            <td class="py-2 px-4 text-right ${dispClass}">${fmtMoney(disponible)}</td>
+          </tr>
+        `;
+      }).join('');
+    }    
+
   </script>
 </body>
 </html>
