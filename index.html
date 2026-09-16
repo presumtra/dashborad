@@ -1244,7 +1244,7 @@
             <td class="py-2 px-3 font-sans text-slate-700">${r.ue}</td>
             <td class="py-2 px-3 font-mono font-semibold text-slate-900">${r.inc}.${r.pp}.${r.pparc}.${r.psub}</td>
             <td class="py-2 px-2 text-center text-slate-500 font-sans">${r.ff}</td>
-            <td class="py-2 px-2 text-center text-slate-500 font-sans">${r.rubro || '-'}</td>
+            <td class="py-2 px-2 text-center text-slate-500 font-sans">${r.rubro ?? '-'}</td>
             <td class="py-2 px-3 font-sans text-slate-800 max-w-xs truncate" title="${r.desc}">${r.desc || '-'}</td>
             <td class="py-2 px-3 text-right font-medium text-slate-800">${fmtMoney(r.vig)}</td>
             <td class="py-2 px-3 text-right text-emerald-700">${fmtMoney(r.disp)}</td>
