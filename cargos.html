@@ -85,7 +85,7 @@
             <a href="index.html#seccionrec">Tablero de Recursos</a>
           </button>
           <button class="tablero-nav-btn flex items-center justify-center gap-1 px-2 py-1 rounded-xl text-sm font-bold transition text-slate-600 hover:bg-amber-100">
-            <i data-lucide="landmark" class="w-4 h-4"></i>
+            <i data-lucide="user-round-arrow-left" class="w-4 h-4"></i>
             <span>Tablero de Cargos</span>
           </button>
         </div>
@@ -512,10 +512,8 @@
       applyFilters();
     }
 
-    // El Inciso también es jerárquico: sus opciones se calculan sobre los
-    // registros que cumplen Programa, Actividad, Fuente y Rubro seleccionados.
-    // De esta forma nunca se ofrecen incisos que no existen dentro de la
-    // combinación seleccionada (por ejemplo, los Programas 2 y 4 no muestran Inciso 5).
+    // El Inciso también es jerárquico: sus opciones se calculan sobre los registros que cumplen Programa, Actividad, Fuente y
+    // Rubro seleccionados. De esta forma nunca se ofrecen incisos que no existen dentro de la combinación seleccionada.
     function actualizarIncisosDisponibles() {
       const progVal = document.getElementById('select-programa').value;
       const actVal = document.getElementById('select-actividad').value;
@@ -967,96 +965,148 @@
       currentPage += delta;
       renderImputacionesTable();
     }
+// ================================================================
+// CONEXIÓN CON GOOGLE SHEETS Y GESTIÓN DE CACHÉ (CARGOS)
+// ================================================================
+const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbx0fAKfV69Hsxm22zYjqcfye12m1RtENVwtSDHBIgkn-YmJQYNnIKi035lLj1_l93jP/exec";
 
-    // ================================================================
-    // CONEXIÓN CON GOOGLE SHEETS
-    // ================================================================
-    // Endpoint existente del parametrizado.
-    const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbx0fAKfV69Hsxm22zYjqcfye12m1RtENVwtSDHBIgkn-YmJQYNnIKi035lLj1_l93jP/exec";
+// Claves únicas para no colisionar con index.html
+const CACHE_KEY_CARGOS_PARAM = "cargos_dashboard_param";
+const CACHE_KEY_CARGOS_TIMESTAMP = "cargos_dashboard_time";
 
-    async function actualizarDesdeGoogleSheets() {
-      const button = document.getElementById('btn-refresh-sheets');
-      const label = button?.querySelector('span');
-      const icon = button?.querySelector('i');
+// Tiempo de expiración: 15 minutos en milisegundos
+const TIEMPO_EXPIRACION_MS = 15 * 60 * 1000;
 
-      if (button) {
-        button.disabled = true;
-        button.classList.add('opacity-70', 'cursor-wait');
-      }
-      if (label) label.textContent = 'Actualizando...';
-      if (icon) icon.classList.add('animate-spin');
+/**
+ * Procesa el JSON de cargos y actualiza la interfaz.
+ */
+function procesarYRenderizarCargos(dataParam) {
+  // ------------------------------------------------------------
+  // PARAMETRIZADO DE CARGOS
+  // ------------------------------------------------------------
+  let rowsParam;
+  if (Array.isArray(dataParam)) {
+    rowsParam = dataParam;
+  } else if (dataParam && Array.isArray(dataParam.records)) {
+    rowsParam = dataParam.records;
+  } else {
+    throw new Error('El parametrizado no devolvió un array de registros válido.');
+  }
 
-      showToast('Actualizando parametrizado de cargos desde Google Sheets...', 'info');
-      document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+  DB.records = parseApiRows(rowsParam);
 
-      try {
-        // Única fuente de datos: parametrizado de cargos en Google Sheets.
-        const responseParam = await fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
-          method: 'GET', cache: 'no-store'
-        });
-
-        if (!responseParam.ok) {
-          throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
-        }
-
-        const dataParam = await responseParam.json();
-
-        // ------------------------------------------------------------
-        // PARAMETRIZADO
-        // ------------------------------------------------------------
-        let rowsParam;
-        if (Array.isArray(dataParam)) {
-          rowsParam = dataParam;
-        } else if (dataParam && Array.isArray(dataParam.records)) {
-          rowsParam = dataParam.records;
-        } else {
-          throw new Error('El parametrizado no devolvió un array de registros válido.');
-        }
-
-        DB.records = parseApiRows(rowsParam);
-
-        if (dataParam && !Array.isArray(dataParam)) {
-          if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
-          if (dataParam.sigla) DB.sigla = dataParam.sigla;
-          if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
-          if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
-          if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
-          if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
-            DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
-          }
-        }
-
-        construirCatalogosDesdeRegistros();
-
-        if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
-          DB.fechaCorte = new Date().toLocaleDateString('es-AR');
-        }
-
-        document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
-        populateFilterOptions();
-        actualizarIncisosDisponibles();
-        applyFilters();
-
-        } catch (error) {
-        console.error('Error al actualizar desde Google Sheets:', error);
-
-        document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
-
-        showToast(
-          'No se pudo actualizar el parametrizado de cargos: ' + error.message,
-          'error'
-        );
-
-        } finally {
-            if (button) {
-            button.disabled = false;
-            button.classList.remove('opacity-70', 'cursor-wait');
-            }
-            if (label) label.textContent = 'Actualizar desde Google Sheets';
-            if (icon) icon.classList.remove('animate-spin');
-            if (window.lucide) lucide.createIcons();
-        }
+  if (dataParam && !Array.isArray(dataParam)) {
+    if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
+    if (dataParam.sigla) DB.sigla = dataParam.sigla;
+    if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
+    if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
+    if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
+    if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
+      DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
     }
+  }
+
+  construirCatalogosDesdeRegistros();
+
+  if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
+    DB.fechaCorte = new Date().toLocaleDateString('es-AR');
+  }
+
+  document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
+  populateFilterOptions();
+  actualizarIncisosDisponibles();
+  applyFilters();
+}
+
+/**
+ * Consulta la API de Google Sheets, guarda en localStorage con la fecha actual y renderiza.
+ * Se invoca mediante el botón o cuando la caché expiró.
+ */
+async function actualizarDesdeGoogleSheets() {
+  const button = document.getElementById('btn-refresh-sheets');
+  const label = button?.querySelector('span');
+  const icon = button?.querySelector('i');
+
+  if (button) {
+    button.disabled = true;
+    button.classList.add('opacity-70', 'cursor-wait');
+  }
+  if (label) label.textContent = 'Actualizando...';
+  if (icon) icon.classList.add('animate-spin');
+
+  showToast('Actualizando parametrizado de cargos desde Google Sheets...', 'info');
+  document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+
+  try {
+    const responseParam = await fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+      method: 'GET', 
+      cache: 'no-store'
+    });
+
+    if (!responseParam.ok) {
+      throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
+    }
+
+    const dataParam = await responseParam.json();
+
+    // 💾 Guardar datos y timestamp específico de esta página en el navegador
+    localStorage.setItem(CACHE_KEY_CARGOS_PARAM, JSON.stringify(dataParam));
+    localStorage.setItem(CACHE_KEY_CARGOS_TIMESTAMP, Date.now().toString());
+
+    // Renderizar los datos
+    procesarYRenderizarCargos(dataParam);
+
+  } catch (error) {
+    console.error('Error al actualizar desde Google Sheets:', error);
+    document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
+
+    showToast(
+      'No se pudo actualizar el parametrizado de cargos: ' + error.message,
+      'error'
+    );
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('opacity-70', 'cursor-wait');
+    }
+    if (label) label.textContent = 'Actualizar desde Google Sheets';
+    if (icon) icon.classList.remove('animate-spin');
+    if (window.lucide) lucide.createIcons();
+  }
+}
+
+/**
+ * Carga inicial con verificación de expiración de 15 minutos para la página de Cargos.
+ */
+function cargarDatosIniciales() {
+  const cacheParam = localStorage.getItem(CACHE_KEY_CARGOS_PARAM);
+  const cacheTime = localStorage.getItem(CACHE_KEY_CARGOS_TIMESTAMP);
+
+  const ahora = Date.now();
+  const timestampGuardado = cacheTime ? parseInt(cacheTime, 10) : 0;
+  const esCacheValida = (ahora - timestampGuardado) < TIEMPO_EXPIRACION_MS;
+
+  if (cacheParam && esCacheValida) {
+    try {
+      console.log('Cargando cargos desde caché local (válida por 15 minutos)...');
+      const dataParam = JSON.parse(cacheParam);
+
+      procesarYRenderizarCargos(dataParam);
+      if (window.lucide) lucide.createIcons();
+      return;
+    } catch (e) {
+      console.warn('Caché de cargos dañada, consultando la API nuevamente...', e);
+    }
+  }
+
+  // Si no hay datos o ya pasaron más de 15 minutos, consulta a Google Sheets
+  console.log('La caché de cargos expiró o no existe. Consultando Google Sheets...');
+  actualizarDesdeGoogleSheets();
+}
+
+// Inicializar al cargar el DOM
+document.addEventListener('DOMContentLoaded', cargarDatosIniciales);
 
     // Normaliza las filas de Google Sheets para que el resto del dashboard
     // trabaje siempre con la estructura interna esperada.
@@ -1096,9 +1146,8 @@
         }
       });
 
-      // Actividades: si no fueron suministradas por la API, generamos una
-      // actividad por combinación Programa/Actividad/UE para mantener el
-      // filtro de actividad operativo.
+      // Actividades: si no fueron suministradas por la API, generamos una actividad por
+      //  combinación Programa/Actividad/UE para mantener el filtro de actividad operativo.
       if (!Array.isArray(DB.actividades) || DB.actividades.length === 0) {
         const mapa = new Map();
         DB.records.forEach(r => {
