@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tablero Presupuestario 2026 - Ministerio de Transporte</title>
+  <link rel="shortcut icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfeO9pkB_PftWSLUnaeI-KNpT_RJORP12Xon1HXdmAMA&s" type="image/vnd.microsoft.icon">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .table-sticky-header th { position: sticky; top: 0; z-index: 10; }
+    .row-inciso { background-color: #f1f5f9; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; }
+    .row-subnivel-1 { background-color: #ffffff; font-weight: 500; color: #334155; }
+    .row-resto { background-color: #fefce8; font-weight: 600; color: #854d0e; }
+  </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased">
+  <script>
+    function actualizarAlturaEncabezado() {
+      const header = document.getElementById('app-header');
+      if (header) {
+        document.documentElement.style.setProperty('--app-header-height', `${header.offsetHeight}px`);
+      }
+    }
+    window.addEventListener('load', actualizarAlturaEncabezado);
+    window.addEventListener('resize', actualizarAlturaEncabezado);
+  </script>
+
+  <!-- HEADER -->
+  <header id="app-header">
+    <div class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="bg-sky-500 p-2.5 rounded-xl shadow-inner flex items-center justify-center text-white">
+            <i data-lucide="bus" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-sky-900/60 text-sky-300 border border-sky-700/50">Presupuesto 2026</span>
+              <h1 class="text-lg font-bold tracking-tight text-white leading-none">Ministerio de Transporte (MTRA)</h1>
+            </div>
+            <p class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-400"></i>
+              <span>Fecha de corte Parametrizado de cargos:</span>
+              <span id="label-fecha-corte" class="font-semibold text-sky-300">Cargando...</span>
+              <span class="mx-1 text-slate-600">|</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center flex-wrap gap-2.5">
+          <button id="btn-refresh-sheets" onclick="actualizarDesdeGoogleSheets()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-sm hover:shadow">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            <span>Actualizar desde Google Sheets</span>
+          </button>
+
+          <button onclick="exportToExcel()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700 shadow-sm">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+            <span>Exportar Apertura</span>
+          </button>
+
+          <button onclick="window.print()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700">
+            <i data-lucide="printer" class="w-4 h-4 text-slate-400"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-1 space-y-2">
+
+    <!-- NOTIFICATION / TOAST -->
+    <div id="toast-banner" class="hidden rounded-lg p-2 text-sm flex items-center justify-between transition-all"></div>
+
+    <!-- FILTER PANEL -->
+    <section id="seccionpres" class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80">
+        <div class="flex items-center justify-between pb-2 mb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-sky-600"></i>
+            <span>Filtros de Análisis Presupuestario de Cargos</span>
+            </div>
+            <button onclick="resetFilters()" class="text-xs font-medium text-sky-600 hover:text-sky-800 flex items-center gap-1 transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Restablecer todos los filtros</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            <!-- Programa Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                    <i data-lucide="folder-tree" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>1. Programa</span>
+                </label>
+                <select id="select-programa" onchange="onProgramaChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+                    <option value="ALL">Todos</option>
+                </select>
+            </div>
+
+            <!-- Actividad / Unidad Ejecutora Filter -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>2. Actividad / UE</span>
+                </label>
+                <select id="select-actividad" onchange="onActividadChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+                    <option value="ALL">Todas</option>
+                </select>
+            </div>
+
+            <!-- 3. Incisos -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                    <i data-lucide="list-filter-plus" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>3. Incisos/PP</span>
+                </label>
+                <select id="select-inciso" onchange="applyFilters()"
+                    class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+                    <option value="ALL">Todos</option>
+                    <option value="1.1">1.1 - Personal Permanente</option>
+                    <option value="1.2">1.2 - Personal Temporario</option>
+                </select>
+            </div>
+
+            <!--4. Régimen Estatuitario -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                    <i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>4. Régimen Estatutario</span>
+                </label>
+                <select id="select-regimen" onchange="applyFilters()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+                    <option value="ALL">Todos los regímenes</option>
+                    <option value="1">1 - Ley 10.430</option>
+                    <option value="12">12 - Jerarquizado Superior</option>
+                </select>
+            </div>
+      
+            <!-- 5. Agrupamientos -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+                    <i data-lucide="building" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <span>5. Agrupamiento Ocupacional</span>
+                </label>
+                <select id="select-agrupamiento" onchange="applyFilters()"
+                    class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition font-medium">
+                    <option value="ALL">Todos los agrupamientos</option>
+                    <option value="1">1 - Servicio</option>
+                    <option value="2">2 - Obrero</option>
+                    <option value="3">3 - Administrativo</option>
+                    <option value="4">4 - Técnico</option>
+                    <option value="5">5 - Profesional</option>
+                    <option value="6">6 - Jerárquico</option>
+                    <option value="14">14 - Secretarios Privados</option>
+                    <option value="15">15 - Autoridades Superiores</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Filter status badge -->
+        <div id="filter-status-bar" class="mt-3.5 pt-1 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <div class="flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span id="filter-active-desc">Mostrando: Ministerio de Transporte Completo</span>
+            </div>
+            <div id="filter-records-count" class="font-medium text-slate-600">-</div>
+        </div>
+    </section>
+
+    <!-- KPI CARDS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-slate-500 mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cargos iniciales</span>
+                <div class="p-2 bg-rose-50 text-rose-600 rounded-xl">
+                    <i data-lucide="file-user" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div>
+            <div id="kpi-inicial" class="text-2xl font-black text-rose-700 tracking-tight">0</div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-rose-500"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-slate-500 mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Modificaciones de cargos</span>
+                <div class="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div>
+            <div id="kpi-modificaciones" class="text-2xl font-black text-purple-700 tracking-tight">0</div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-purple-500"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cargos definitivos</span>
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <i data-lucide="contact-round" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            <div>
+            <div id="kpi-definitivos" class="text-2xl font-black text-emerald-600 tracking-tight">0</div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-slate-500 mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cargos restringidos</span>
+                <div class="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                    <i data-lucide="user-lock" class="w-5 h-5"></i>
+                </div>
+            </div>
+        <div>
+        <div id="kpi-restringidos" class="text-2xl font-black text-amber-600 tracking-tight">0</div>
+        </div>
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-slate-500 mb-1">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Saldo de Cargos</span>
+                <div class="p-2 bg-cyan-50 text-cyan-600 rounded-xl">
+                    <i data-lucide="user-round-group" class="w-5 h-5"></i>
+                </div>
+            </div>
+            <div>
+               <div id="kpi-saldo" class="text-2xl font-black text-cyan-600 tracking-tight">0</div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-cyan-500"></div>
+        </div>
+    </section>
+
+    <!-- CHARTS & SUMMARY SECTION -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 lg:col-span-2 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4 text-sky-600"></i>
+            <h3 class="text-sm font-bold text-slate-800">Situación de ocupación de los Cargos ditribuidos por Agrupamiento Ocupacional</h3>
+          </div>
+          <span class="text-xs text-slate-400">Valores</span>
+        </div>
+        <div class="flex-1 relative min-h-[260px]">
+          <canvas id="chart-agrupamientos"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i>
+            <h3 class="text-sm font-bold text-slate-800">Distribución de los cargos por agrupamiento</h3>
+          </div>
+        </div>
+        <div class="flex-1 relative min-h-[260px] flex items-center justify-center">
+          <canvas id="chart-doughnut"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLA OFICIAL DE APERTURA (DETALLE MTRA.XLSX) -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-sky-600"></span>
+            <h2 class="text-base font-bold text-slate-900">Informe de Ocupación de Cargos MTRA</h2>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Detalle discriminado por Inciso y Partidas Principales</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100/90 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 table-sticky-header">
+              <th class="py-1.5 px-4">Reg. Estatutario / Partida / Agrupamiento</th>
+              <th class="py-1.5 px-4 text-center">Cargos Iniciales</th>
+              <th class="py-1.5 px-4 text-center">Modif. de Cargos</th>
+              <th class="py-1.5 px-4 text-center">Cargos Definitivos</th>
+              <th class="py-1.5 px-4 text-center">Cargos Restringidos</th>
+              <th class="py-1.5 px-4 text-center">Saldo de Cargos</th>
+            </tr>
+          </thead>
+          <tbody id="table-apertura-body" class="divide-y divide-slate-200/60 font-mono text-[11px]"></tbody>
+          <tfoot id="table-apertura-foot" class="bg-slate-900 text-white font-bold text-xs"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- EXPLORADOR DE IMPUTACIONES DETALLADAS -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="p-5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2">
+            <i data-lucide="table-properties" class="w-4 h-4 text-slate-600"></i>
+            <h3 class="text-sm font-bold text-slate-900">Explorador de la estructura Cargos MTRA</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Listado completo de todas las partidas filtradas según la selección activa</p>
+        </div>
+
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="search-imputaciones" oninput="onSearchInput()" placeholder="Buscar por descripción, código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition">
+          </div>
+          <button onclick="exportImputacionesExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition border border-slate-300 whitespace-nowrap">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-slate-600"></i>
+            <span>Exportar Lista</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-96">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="sticky top-0 z-10">
+            <tr class="bg-slate-100 text-slate-600 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200 table-sticky-header">
+              <th class="py-2.5 px-2">Prg</th>
+              <th class="py-2.5 px-2">Act</th>
+              <th class="py-2.5 px-2">UE</th>
+              <th class="py-2.5 px-3">Inciso / Partida Principal</th>
+              <th class="py-2.5 px-3">Régimen Estatutario</th>
+              <th class="py-2.5 px-3">Agrupamiento Ocupacional</th>
+              <th class="py-2.5 px-2">Cargos Iniciales.</th>
+              <th class="py-2.5 px-2">Mod. Cargos</th>
+              <th class="py-2.5 px-2">Cargos Def.</th>
+              <th class="py-2.5 px-2">Cargos Rest.</th>
+              <th class="py-2.5 px-2">Saldo Cargos</th>
+            </tr>
+          </thead>
+          <tbody id="table-imputaciones-body" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
+        </table>
+      </div>
+      <div id="imputaciones-pagination" class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500"></div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 mt-8 py-4 text-center text-xs text-slate-500 font-medium">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold tracking-wide uppercase">VRM</span>
+        <span>Ministerio de Transporte (MTRA) — Tablero de Control y Análisis Presupuestario de Cargos | Presupuesto 2026</span>
+      </div>
+      <div class="flex items-center gap-3 text-slate-400 text-[11px]">
+        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold">v28.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Los datos se obtienen exclusivamente desde Google Sheets.
+    // Esta estructura vacía permite que la interfaz se inicialice mientras se realiza la consulta.
+    let DB = {
+      ministerio: 'Ministerio de Transporte',
+      sigla: 'MTRA',
+      fechaCorte: '',
+      programas: {},
+      actividades: [],
+      unidadesEjecutoras: {},
+      records: []
+    };
+
+    let activeFilteredRecords = [];
+    let searchFilteredRecords = [];
+    let currentPage = 1;
+    const PAGE_SIZE = 50;
+
+    let chartAgrupamientosInstance = null;
+    let chartDoughnutInstance = null;
+
+    const fmtMoney = (val) => {
+      if (val === undefined || val === null || isNaN(val)) return '$ 0,00';
+      return '$ ' + Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const fmtPct = (val) => {
+      if (val === undefined || val === null || isNaN(val)) return '0,00%';
+      return Number(val).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    };
+
+    function formatearFechaCorte(fecha) {
+      if (!fecha) return 'Sin fecha';
+
+    // Si viene como YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      const [anio, mes, dia] = fecha.split('-');
+      return `${dia}/${mes}/${anio}`;
+      }
+
+    // Si ya viene como DD/MM/YYYY, no modificarla
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
+        return fecha;
+      }
+
+      return fecha;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initApp();
+    });
+
+    async function initApp() {
+      document.getElementById('label-fecha-corte').textContent = 'Actualizando...';
+      await actualizarDesdeGoogleSheets();
+    }
+
+    function populateFilterOptions() {
+      const selectProg = document.getElementById('select-programa');
+      const selectAct = document.getElementById('select-actividad');
+
+      selectProg.innerHTML = '<option value="ALL">Todos los Programas</option>';
+      selectAct.innerHTML = '<option value="ALL">Todas las Actividades</option>';
+
+      const selectRegimen = document.getElementById('select-regimen');
+      selectRegimen.innerHTML = '<option value="ALL">Todos los regímenes</option>';
+      const regimenes = [...new Map(DB.records
+        .filter(r => Number.isFinite(r.ree) && r.ree !== 0)
+        .map(r => [r.ree, r.desr || `Régimen ${r.ree}`]))
+        .entries()].sort((a, b) => a[0] - b[0]);
+      regimenes.forEach(([codigo, nombre]) => {
+        const opt = document.createElement('option');
+        opt.value = String(codigo);
+        opt.textContent = `${codigo} - ${nombre}`;
+        selectRegimen.appendChild(opt);
+      });
+
+      const selectAgrup = document.getElementById('select-agrupamiento');
+      selectAgrup.innerHTML = '<option value="ALL">Todos los agrupamientos</option>';
+      const nombresAO = {1:'1 - Servicio',2:'2 - Obrero',3:'3 - Administrativo',4:'4 - Técnico',5:'5 - Profesional',6:'6 - Jerárquico',14:'14 - Secretarios Privados',15:'15 - Autoridades Superiores'};
+      const agrupamientos = [...new Set(DB.records.map(r => r.ao).filter(v => Number.isFinite(v) && v !== 0))].sort((a,b) => a-b);
+      agrupamientos.forEach(codigo => {
+        const opt = document.createElement('option');
+        opt.value = String(codigo);
+        opt.textContent = nombresAO[codigo] || `${codigo} - Agrupamiento`;
+        selectAgrup.appendChild(opt);
+      });
+
+      Object.keys(DB.programas).sort((a, b) => Number(a) - Number(b)).forEach(pKey => {
+        const opt = document.createElement('option');
+        opt.value = pKey;
+        opt.textContent = DB.programas[pKey];
+        selectProg.appendChild(opt);
+      });
+
+      DB.actividades.forEach(act => {
+        const opt = document.createElement('option');
+        opt.value = `${act.programa}-${act.actividad}`;
+        opt.dataset.programa = act.programa;
+        opt.textContent = `Prog ${act.programa} / Act ${act.actividad} (UE ${act.ue}) - ${act.nombre}`;
+        selectAct.appendChild(opt);
+      });
+    }
+
+    function onProgramaChange() {
+      const selectedProg = document.getElementById('select-programa').value;
+      const selectAct = document.getElementById('select-actividad');
+
+      Array.from(selectAct.options).forEach(opt => {
+        if (opt.value === 'ALL') return;
+        opt.style.display = (selectedProg === 'ALL' || opt.dataset.programa === selectedProg) ? 'block' : 'none';
+      });
+
+      selectAct.value = 'ALL';
+      actualizarIncisosDisponibles();
+      actualizarRegimenesYAgrupamientos();
+      applyFilters();
+    }
+
+    function onActividadChange() {
+      const selectedAct = document.getElementById('select-actividad').value;
+      const selectProg = document.getElementById('select-programa');
+
+      if (selectedAct !== 'ALL') {
+        const [p, a] = selectedAct.split('-');
+        selectProg.value = p;
+      }
+      actualizarIncisosDisponibles();
+      actualizarRegimenesYAgrupamientos();
+      applyFilters();
+    }
+
+    // El Inciso también es jerárquico: sus opciones se calculan sobre los
+    // registros que cumplen Programa, Actividad, Fuente y Rubro seleccionados.
+    // De esta forma nunca se ofrecen incisos que no existen dentro de la
+    // combinación seleccionada (por ejemplo, los Programas 2 y 4 no muestran Inciso 5).
+    function actualizarIncisosDisponibles() {
+      const progVal = document.getElementById('select-programa').value;
+      const actVal = document.getElementById('select-actividad').value;
+      const selectInciso = document.getElementById('select-inciso');
+      const anterior = selectInciso.value;
+      const disponibles = new Set(DB.records.filter(r => {
+        if (progVal !== 'ALL' && r.p !== Number(progVal)) return false;
+        if (actVal !== 'ALL') { const [p,a] = actVal.split('-'); if (r.p !== Number(p) || r.a !== Number(a)) return false; }
+        return true;
+      }).map(r => `${r.inc}.${r.pp}`));
+      selectInciso.innerHTML = '<option value="ALL">Todos</option>';
+      [['1.1','1.1 - Personal Permanente'],['1.2','1.2 - Servicios No Personales Temporario']].forEach(([v,t]) => {
+        if (disponibles.has(v)) { const o=document.createElement('option'); o.value=v; o.textContent=t; selectInciso.appendChild(o); }
+      });
+      selectInciso.value = disponibles.has(anterior) ? anterior : 'ALL';
+    }
+
+    function actualizarRegimenesYAgrupamientos() {
+      const progVal = document.getElementById('select-programa').value;
+      const actVal = document.getElementById('select-actividad').value;
+      const incisoVal = document.getElementById('select-inciso').value;
+      const regimenSelect = document.getElementById('select-regimen');
+      const agrupSelect = document.getElementById('select-agrupamiento');
+      const regimenAnterior = regimenSelect.value;
+      const agrupAnterior = agrupSelect.value;
+
+      const tieneValores = r => [r.ci, r.mc, r.cd, r.cr, r.sc].some(v => Number(v) !== 0);
+      const coincideBase = r => {
+        if (progVal !== 'ALL' && r.p !== Number(progVal)) return false;
+        if (actVal !== 'ALL') {
+          const [p, a] = actVal.split('-');
+          if (r.p !== Number(p) || r.a !== Number(a)) return false;
+        }
+        if (incisoVal !== 'ALL' && `${r.inc}.${r.pp}` !== incisoVal) return false;
+        return tieneValores(r);
+      };
+
+      const regimenes = [...new Map(DB.records.filter(coincideBase)
+        .filter(r => Number.isFinite(r.ree) && r.ree !== 0)
+        .map(r => [r.ree, r.desr || `Régimen ${r.ree}`])).entries()]
+        .sort((a,b) => a[0] - b[0]);
+
+      regimenSelect.innerHTML = '<option value="ALL">Todos los regímenes</option>';
+      regimenes.forEach(([codigo, nombre]) => {
+        const o = document.createElement('option');
+        o.value = String(codigo);
+        o.textContent = `${codigo} - ${nombre}`;
+        regimenSelect.appendChild(o);
+      });
+      regimenSelect.value = regimenes.some(([codigo]) => String(codigo) === regimenAnterior) ? regimenAnterior : 'ALL';
+
+      const regimenActual = regimenSelect.value;
+      const coincideAO = r => {
+        if (!coincideBase(r)) return false;
+        if (regimenActual !== 'ALL' && r.ree !== Number(regimenActual)) return false;
+        return Number.isFinite(r.ao) && r.ao !== 0;
+      };
+
+      const nombresAO = {1:'1 - Servicio',2:'2 - Obrero',3:'3 - Administrativo',4:'4 - Técnico',5:'5 - Profesional',6:'6 - Jerárquico',14:'14 - Secretarios Privados',15:'15 - Autoridades Superiores'};
+      const agrupamientos = [...new Set(DB.records.filter(coincideAO).map(r => r.ao))].sort((a,b) => a-b);
+
+      agrupSelect.innerHTML = '<option value="ALL">Todos los agrupamientos</option>';
+      agrupamientos.forEach(codigo => {
+        const o = document.createElement('option');
+        o.value = String(codigo);
+        o.textContent = nombresAO[codigo] || `${codigo} - Agrupamiento`;
+        agrupSelect.appendChild(o);
+      });
+      agrupSelect.value = agrupamientos.some(codigo => String(codigo) === agrupAnterior) ? agrupAnterior : 'ALL';
+    }
+
+    function resetFilters() {
+      document.getElementById('select-programa').value = 'ALL';
+      document.getElementById('select-actividad').value = 'ALL';
+      document.getElementById('select-inciso').value = 'ALL';
+      document.getElementById('select-regimen').value = 'ALL';
+      document.getElementById('select-agrupamiento').value = 'ALL';
+      document.getElementById('search-imputaciones').value = '';
+      onProgramaChange();
+    }
+
+    function applyFilters() {
+      const progVal = document.getElementById('select-programa').value;
+      const actVal = document.getElementById('select-actividad').value;
+      const incisoVal = document.getElementById('select-inciso').value;
+      const regimenVal = document.getElementById('select-regimen').value;
+      const agrupVal = document.getElementById('select-agrupamiento').value;
+
+      actualizarRegimenesYAgrupamientos();
+      const regimenValActual = document.getElementById('select-regimen').value;
+      const agrupValActual = document.getElementById('select-agrupamiento').value;
+
+      activeFilteredRecords = DB.records.filter(r => {
+        if (progVal !== 'ALL' && r.p !== Number(progVal)) return false;
+        if (actVal !== 'ALL') {
+          const [p, a] = actVal.split('-');
+          if (r.p !== Number(p) || r.a !== Number(a)) return false;
+        }
+        if (incisoVal !== 'ALL' && `${r.inc}.${r.pp}` !== incisoVal) return false;
+        if (regimenValActual !== 'ALL' && r.ree !== Number(regimenValActual)) return false;
+        if (agrupValActual !== 'ALL' && r.ao !== Number(agrupValActual)) return false;
+        return true;
+      });
+
+      let desc = [];
+      if (progVal === 'ALL' && actVal === 'ALL' && incisoVal === 'ALL' && regimenVal === 'ALL' && agrupVal === 'ALL') {
+        desc.push('Ministerio de Transporte Completo');
+      } else {
+        if (progVal !== 'ALL') desc.push(DB.programas[Number(progVal)] || `Prog ${progVal}`);
+        if (actVal !== 'ALL') {
+          const [p,a] = actVal.split('-');
+          const obj = DB.actividades.find(x => x.programa === Number(p) && x.actividad === Number(a));
+          if (obj) desc.push(`Act ${a}: ${obj.nombre}`);
+        }
+        if (incisoVal !== 'ALL') desc.push(incisoVal === '1.1' ? '1.1 - Personal Permanente' : '1.2 - Servicios No Personales Temporario');
+        if (regimenVal !== 'ALL') desc.push(regimenVal === '1' ? '1 - Ley 10.430' : '12 - Jerarquizado Superior');
+        if (agrupVal !== 'ALL') {
+          const nombres = {1:'1 - Servicio',2:'2 - Obrero',3:'3 - Administrativo',4:'4 - Técnico',5:'5 - Profesional',6:'6 - Jerárquico',14:'14 - Secretarios Privados',15:'15 - Autoridades Superiores'};
+          desc.push(nombres[agrupVal] || `Agrupamiento ${agrupVal}`);
+        }
+      }
+
+      document.getElementById('filter-active-desc').textContent = 'Mostrando: ' + desc.join(' | ');
+      document.getElementById('filter-records-count').textContent = `${activeFilteredRecords.length} registros`;
+      updateKPIs(activeFilteredRecords);
+      renderAperturaTable(activeFilteredRecords);
+      updateCharts(activeFilteredRecords);
+      onSearchInput();
+    }
+
+    function updateKPIs(records) {
+      const totalInicial = records.reduce((acc, r) => acc + r.ci, 0);
+      const totalModificaciones = records.reduce((acc, r) => acc + r.mc, 0);
+      const totalDefinitivos = records.reduce((acc, r) => acc + r.cd, 0);
+      const totalRestringidos = records.reduce((acc, r) => acc + r.cr, 0);
+      const totalSaldo = records.reduce((acc, r) => acc + r.sc, 0);
+
+      document.getElementById('kpi-inicial').textContent = fmtNumber(totalInicial);
+      document.getElementById('kpi-modificaciones').textContent = fmtNumber(totalModificaciones);
+      document.getElementById('kpi-definitivos').textContent = fmtNumber(totalDefinitivos);
+      document.getElementById('kpi-restringidos').textContent = fmtNumber(totalRestringidos);
+      document.getElementById('kpi-saldo').textContent = fmtNumber(totalSaldo);
+    }
+
+    const fmtNumber = (val) => Number(val || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+
+    function hasCargoValues(r) {
+      return [r.ci, r.mc, r.cd, r.cr, r.sc].some(v => Number(v) !== 0);
+    }
+
+    function sumCargoValues(records) {
+      return records.reduce((t, r) => ({
+        ci: t.ci + Number(r.ci || 0),
+        mc: t.mc + Number(r.mc || 0),
+        cd: t.cd + Number(r.cd || 0),
+        cr: t.cr + Number(r.cr || 0),
+        sc: t.sc + Number(r.sc || 0)
+      }), {ci:0, mc:0, cd:0, cr:0, sc:0});
+    }
+
+    function getRegimenLabel(records, ree) {
+      const r = records.find(x => Number(x.ree) === Number(ree) && x.desr);
+      if (r && r.desr) return `${ree} - ${r.desr}`;
+      const conocidos = {
+        1: '1 - Ley 10.430',
+        12: '12 - Jerarquizado Superior'
+      };
+      return conocidos[Number(ree)] || `${ree} - Régimen Estatutario`;
+    }
+
+    function getIncisoPPLabel(inc, pp) {
+      const conocidos = {
+        '1.1': '1.1 - Personal Permanente',
+        '1.2': '1.2 - Servicios No Personales Temporario'
+      };
+      return conocidos[`${inc}.${pp}`] || `${inc}.${pp}`;
+    }
+
+    function getAgrupamientoLabel(records, ao) {
+      const r = records.find(x => Number(x.ao) === Number(ao) && x.desao);
+      if (r && r.desao) return `${ao} - ${r.desao}`;
+      const conocidos = {
+        1: '1 - Servicio',
+        2: '2 - Obrero',
+        3: '3 - Administrativo',
+        4: '4 - Técnico',
+        5: '5 - Profesional',
+        6: '6 - Jerárquico',
+        14: '14 - Secretarios Privados',
+        15: '15 - Autoridades Superiores'
+      };
+      return conocidos[Number(ao)] || `${ao} - Agrupamiento Ocupacional`;
+    }
+
+    function calculateAperturaRows(records) {
+      // Jerarquía: Régimen Estatutario -> Inciso y PP -> Agrupamiento Ocupacional.
+      // Sólo se generan nodos que tengan al menos un valor de cargos distinto de cero.
+      const regimenes = new Map();
+
+      records.filter(hasCargoValues).forEach(r => {
+        const ree = Number(r.ree);
+        const inc = Number(r.inc);
+        const pp = Number(r.pp);
+        const ao = Number(r.ao);
+        if (!Number.isFinite(ree) || !Number.isFinite(inc) || !Number.isFinite(pp) || !Number.isFinite(ao)) return;
+
+        if (!regimenes.has(ree)) regimenes.set(ree, new Map());
+        const regimenMap = regimenes.get(ree);
+        const incKey = `${inc}.${pp}`;
+        if (!regimenMap.has(incKey)) regimenMap.set(incKey, new Map());
+        const agrupMap = regimenMap.get(incKey);
+        if (!agrupMap.has(ao)) agrupMap.set(ao, []);
+        agrupMap.get(ao).push(r);
+      });
+
+      const rows = [];
+      [...regimenes.keys()].sort((a,b) => a-b).forEach(ree => {
+        const regimenMap = regimenes.get(ree);
+        const regimenRecords = records.filter(r => Number(r.ree) === ree && hasCargoValues(r));
+        rows.push({
+          key: `ree-${ree}`,
+          label: getRegimenLabel(records, ree),
+          level: 0,
+          ...sumCargoValues(regimenRecords)
+        });
+
+        [...regimenMap.keys()].sort((a,b) => {
+          const [ai, ap] = a.split('.').map(Number);
+          const [bi, bp] = b.split('.').map(Number);
+          return ai - bi || ap - bp;
+        }).forEach(incKey => {
+          const agrupMap = regimenMap.get(incKey);
+          const [inc, pp] = incKey.split('.').map(Number);
+          const incRecords = [];
+          agrupMap.forEach(rs => incRecords.push(...rs));
+
+          rows.push({
+            key: `ree-${ree}-inc-${incKey}`,
+            label: getIncisoPPLabel(inc, pp),
+            level: 1,
+            ...sumCargoValues(incRecords)
+          });
+
+          [...agrupMap.keys()].sort((a,b) => a-b).forEach(ao => {
+            const agrupRecords = agrupMap.get(ao);
+            rows.push({
+              key: `ree-${ree}-inc-${incKey}-ao-${ao}`,
+              label: getAgrupamientoLabel(records, ao),
+              level: 2,
+              ...sumCargoValues(agrupRecords)
+            });
+          });
+        });
+      });
+
+      return rows;
+    }
+
+    function renderAperturaTable(records) {
+      const rows = calculateAperturaRows(records);
+      const tbody = document.getElementById('table-apertura-body');
+      tbody.innerHTML = '';
+
+      // El total se toma de los nodos de Régimen (nivel 0), evitando sumar dos veces
+      // los niveles inferiores que son desagregaciones del mismo importe.
+      const totals = rows.filter(r => r.level === 0).reduce((t,r) => ({
+        ci:t.ci+r.ci, mc:t.mc+r.mc, cd:t.cd+r.cd, cr:t.cr+r.cr, sc:t.sc+r.sc
+      }), {ci:0,mc:0,cd:0,cr:0,sc:0});
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const levelClasses = {
+          0: 'font-bold text-slate-950',
+          1: 'font-semibold text-slate-800',
+          2: 'font-medium text-slate-700'
+        };
+        const padding = {0: 'pl-4', 1: 'pl-8', 2: 'pl-12'};
+        tr.className = 'hover:bg-slate-50 transition-colors';
+        tr.innerHTML = `
+          <td class="py-1.5 px-4 ${padding[r.level]} ${levelClasses[r.level]} text-xs">${r.label}</td>
+          <td class="py-1.5 px-4 text-center ${r.level === 0 ? 'font-bold text-slate-950' : 'text-slate-700'} text-xs">${fmtNumber(r.ci)}</td>
+          <td class="py-1.5 px-4 text-center ${r.level === 0 ? 'font-bold text-violet-800' : 'text-violet-700'} text-xs">${fmtNumber(r.mc)}</td>
+          <td class="py-1.5 px-4 text-center ${r.level === 0 ? 'font-bold text-emerald-800' : 'text-emerald-700'} text-xs">${fmtNumber(r.cd)}</td>
+          <td class="py-1.5 px-4 text-center ${r.level === 0 ? 'font-bold text-amber-700' : 'text-amber-600'} text-xs">${fmtNumber(r.cr)}</td>
+          <td class="py-1.5 px-4 text-center ${r.level === 0 ? 'font-bold text-sky-800' : 'text-sky-700'} text-xs">${fmtNumber(r.sc)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const tfoot = document.getElementById('table-apertura-foot');
+      tfoot.innerHTML = `
+        <tr class="border-t-2 border-slate-700">
+          <td class="py-3 px-4 font-sans text-white uppercase tracking-wider font-bold">TOTAL APERTURA MTRA</td>
+          <td class="py-3 px-4 text-center text-white">${fmtNumber(totals.ci)}</td>
+          <td class="py-3 px-4 text-center text-violet-300">${fmtNumber(totals.mc)}</td>
+          <td class="py-3 px-4 text-center text-emerald-300">${fmtNumber(totals.cd)}</td>
+          <td class="py-3 px-4 text-center text-amber-300">${fmtNumber(totals.cr)}</td>
+          <td class="py-3 px-4 text-center text-sky-300">${fmtNumber(totals.sc)}</td>
+        </tr>`;
+    }
+
+    function updateCharts(records) {
+      const nombresAO = {
+        1: '1. Servicio', 2: '2. Obrero', 3: '3. Administrativo',
+        4: '4. Técnico', 5: '5. Profesional', 6: '6. Jerárquico',
+        14: '14 - Secretarios Privados', 15: '15. Autoridades Superiores'
+      };
+
+      const agrupados = new Map();
+      records.forEach(r => {
+        const ao = Number(r.ao);
+        if (!Number.isFinite(ao) || ao === 0) return;
+        if (!agrupados.has(ao)) agrupados.set(ao, { ci:0, mc:0, cd:0, cr:0, sc:0 });
+        const g = agrupados.get(ao);
+        g.ci += r.ci; g.mc += r.mc; g.cd += r.cd; g.cr += r.cr; g.sc += r.sc;
+      });
+
+      const orden = [1,2,3,4,5,6,14,15];
+      const data = orden.filter(ao => agrupados.has(ao)).map(ao => ({
+        label: nombresAO[ao] || `Agrupamiento ${ao}`,
+        ...agrupados.get(ao)
+      }));
+
+      const ctxBar = document.getElementById('chart-agrupamientos').getContext('2d');
+      if (chartAgrupamientosInstance) chartAgrupamientosInstance.destroy();
+      chartAgrupamientosInstance = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: data.map(d => d.label),
+          datasets: [{
+            label: 'Cargos Iniciales',
+            data: data.map(d => d.ci),
+            backgroundColor: 'rgba(23, 142, 159, 0.85)',
+            borderRadius: 6
+          },{
+            label: 'Cargos Definitivos',
+            data: data.map(d => d.cd),
+            backgroundColor: 'rgba(117, 22, 85, 0.85)',
+            borderRadius: 6
+          },{
+            label: 'Cargos Restringidos',
+            data: data.map(d => d.cr),
+            backgroundColor: 'rgba(230, 24, 118, 0.85)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
+          },
+          scales: { y: { beginAtZero: true, ticks: { callback: val => Number(val).toLocaleString('es-AR') } } }
+        }
+      });
+
+      const ctxDoughnut = document.getElementById('chart-doughnut').getContext('2d');
+      if (chartDoughnutInstance) chartDoughnutInstance.destroy();
+      chartDoughnutInstance = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+          labels: data.map(d => d.label),
+          datasets: [{
+            data: data.map(d => d.cd),
+            backgroundColor: ['#0ea5e9','#f1f748','#23aabd','#10b981','#058203','#e61c72','#ec4899','#751655'],
+            borderWidth: 2, borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${Number(ctx.raw).toLocaleString('es-AR')} cargos` } }
+          },
+          cutout: '65%'
+        }
+      });
+    }
+
+    function onSearchInput() {
+      const query = document.getElementById('search-imputaciones').value.toLowerCase().trim();
+      if (!query) {
+        searchFilteredRecords = activeFilteredRecords;
+      } else {
+        searchFilteredRecords = activeFilteredRecords.filter(r => {
+          const desc = (r.desc || '').toLowerCase();
+          const p = String(r.p);
+          const a = String(r.a);
+          const ue = String(r.ue);
+          const incStr = `${r.inc}.${r.pp}.${r.pparc}.${r.psub}`;
+          return desc.includes(query) || p.includes(query) || a.includes(query) || ue.includes(query) || incStr.includes(query);
+        });
+      }
+      currentPage = 1;
+      renderImputacionesTable();
+    }
+
+    function renderImputacionesTable() {
+      const tbody = document.getElementById('table-imputaciones-body');
+      tbody.innerHTML = '';
+
+      const totalItems = searchFilteredRecords.length;
+      const startIdx = (currentPage - 1) * PAGE_SIZE;
+      const pageItems = searchFilteredRecords.slice(startIdx, startIdx + PAGE_SIZE);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400 font-sans">No se encontraron imputaciones para los filtros seleccionados</td></tr>`;
+      } else {
+        pageItems.forEach(r => {
+          const ejec = r.vig - r.disp;
+          const pct = r.vig > 0 ? (ejec / r.vig * 100) : 0;
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition-colors';
+          tr.innerHTML = `
+            <td class="py-2 px-2 font-sans text-slate-700">${r.p}</td>
+            <td class="py-2 px-2 font-sans text-slate-700">${r.a}</td>
+            <td class="py-2 px-2 font-sans text-slate-700">${r.ue}</td>
+            <td class="py-2 px-3 font-mono font-semibold text-slate-900">${r.inc}.${r.pp} - ${r.desp || '-'}</td>
+            <td class="py-2 px-3 text-left text-slate-500 font-sans">${r.ree} - ${r.desr || '-'}</td>
+            <td class="py-2 px-3 text-left text-slate-500 font-sans">${r.ao} - ${r.desao || '-'}</td>
+            <td class="py-2 px-2 text-center font-sans text-slate-700">${r.ci}</td>
+            <td class="py-2 px-2 text-center font-sans text-slate-700">${r.mc}</td>
+            <td class="py-2 px-2 text-center font-sans text-slate-700">${r.cd}</td>
+            <td class="py-2 px-2 text-center font-sans text-slate-700">${r.cr}</td>
+            <td class="py-2 px-2 text-center font-sans text-slate-700">${r.sc}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+      const paginationDiv = document.getElementById('imputaciones-pagination');
+      paginationDiv.innerHTML = `
+        <div>Mostrando ${totalItems > 0 ? startIdx + 1 : 0} a ${Math.min(startIdx + PAGE_SIZE, totalItems)} de ${totalItems} imputaciones</div>
+        <div class="flex items-center gap-2">
+          <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:text-sky-600"'}>
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <span>Página ${currentPage} de ${totalPages}</span>
+          <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="hover:text-sky-600"'}>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderImputacionesTable();
+    }
+
+    // ================================================================
+    // CONEXIÓN CON GOOGLE SHEETS
+    // ================================================================
+    // Endpoint existente del parametrizado.
+    const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbx0fAKfV69Hsxm22zYjqcfye12m1RtENVwtSDHBIgkn-YmJQYNnIKi035lLj1_l93jP/exec";
+
+    async function actualizarDesdeGoogleSheets() {
+      const button = document.getElementById('btn-refresh-sheets');
+      const label = button?.querySelector('span');
+      const icon = button?.querySelector('i');
+
+      if (button) {
+        button.disabled = true;
+        button.classList.add('opacity-70', 'cursor-wait');
+      }
+      if (label) label.textContent = 'Actualizando...';
+      if (icon) icon.classList.add('animate-spin');
+
+      showToast('Actualizando parametrizado de cargos desde Google Sheets...', 'info');
+      document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+
+      try {
+        // Única fuente de datos: parametrizado de cargos en Google Sheets.
+        const responseParam = await fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+          method: 'GET', cache: 'no-store'
+        });
+
+        if (!responseParam.ok) {
+          throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
+        }
+
+        const dataParam = await responseParam.json();
+
+        // ------------------------------------------------------------
+        // PARAMETRIZADO
+        // ------------------------------------------------------------
+        let rowsParam;
+        if (Array.isArray(dataParam)) {
+          rowsParam = dataParam;
+        } else if (dataParam && Array.isArray(dataParam.records)) {
+          rowsParam = dataParam.records;
+        } else {
+          throw new Error('El parametrizado no devolvió un array de registros válido.');
+        }
+
+        DB.records = parseApiRows(rowsParam);
+
+        if (dataParam && !Array.isArray(dataParam)) {
+          if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
+          if (dataParam.sigla) DB.sigla = dataParam.sigla;
+          if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
+          if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
+          if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
+          if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
+            DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
+          }
+        }
+
+        construirCatalogosDesdeRegistros();
+
+        if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
+          DB.fechaCorte = new Date().toLocaleDateString('es-AR');
+        }
+
+        document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
+        populateFilterOptions();
+        actualizarIncisosDisponibles();
+        applyFilters();
+
+        } catch (error) {
+        console.error('Error al actualizar desde Google Sheets:', error);
+
+        document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
+
+        showToast(
+          'No se pudo actualizar el parametrizado de cargos: ' + error.message,
+          'error'
+        );
+
+        } finally {
+            if (button) {
+            button.disabled = false;
+            button.classList.remove('opacity-70', 'cursor-wait');
+            }
+            if (label) label.textContent = 'Actualizar desde Google Sheets';
+            if (icon) icon.classList.remove('animate-spin');
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    // Normaliza las filas de Google Sheets para que el resto del dashboard
+    // trabaje siempre con la estructura interna esperada.
+    function parseApiRows(rows) {
+      const num = v => {
+        if (v === null || v === undefined || v === '') return 0;
+        const n = Number(String(v).replace(/\./g,'').replace(',','.'));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const first = (r, keys, fallback=0) => { for (const k of keys) if (r[k] !== undefined && r[k] !== null && r[k] !== '') return r[k]; return fallback; };
+      return rows.map(r => ({
+        p: num(first(r,['p','programa'])), a: num(first(r,['a','actividad'])), ue: num(first(r,['ue','unidad_ejecutora'])),
+        inc: num(first(r,['inc','inciso'])), pp: num(first(r,['pp','partida_principal'])), pparc: num(first(r,['pparc','partida_parcial'])), psub: num(first(r,['psub','partida_subparcial'])),
+        ree: num(first(r,['ree','REE','regimen','regimen_estatutario','r.est','rEst','R.Est'])),
+        desr: String(first(r,['desr','desc_re','descripcion_regimen','descripcion_ree'],'')),
+        ao: num(first(r,['ao','AO','agrupamiento','agrupamiento_ocupacional','agrup_ocupacional','Agrup. O'])),
+        desao: String(first(r,['desao','desc_ao','descripcion_ao','descripcion_agrupamiento'],'')),
+        desc: String(first(r,['desc','descripcion','desp'], 'Sin Descripción')),
+        desp: String(first(r,['desp','desc','descripcion'], 'Sin Descripción')),
+        ci: num(first(r,['ci','CI','cargos_iniciales','cargosIniciales','iniciales','Cargos Iniciales'])),
+        mc: num(first(r,['mc','MC','modificaciones_cargos','mod_cargos','modificaciones','Modificaciones de Cargos'])),
+        cd: num(first(r,['cd','CD','cargos_definitivos','cargosDefinitivos','definitivos','Cargos Definitivos'])),
+        cr: num(first(r,['cr','CR','cargos_restringidos','cargosRestringidos','restringidos','Cargos Restringidos'])),
+        sc: num(first(r,['sc','SC','saldo_cargos','saldoCargos','saldo','Saldo de Cargos']))
+      }));
+    }
+
+    function construirCatalogosDesdeRegistros() {
+      // Programas: si no vinieron desde la API, generamos las opciones a
+      // partir de los programas existentes en los registros.
+      if (!DB.programas || typeof DB.programas !== 'object') DB.programas = {};
+
+      const programasEnRegistros = [...new Set(DB.records.map(r => r.p).filter(Number.isFinite))];
+      programasEnRegistros.forEach(p => {
+        if (DB.programas[p] === undefined || DB.programas[p] === null || DB.programas[p] === '') {
+          DB.programas[p] = `Programa ${p}`;
+        }
+      });
+
+      // Actividades: si no fueron suministradas por la API, generamos una
+      // actividad por combinación Programa/Actividad/UE para mantener el
+      // filtro de actividad operativo.
+      if (!Array.isArray(DB.actividades) || DB.actividades.length === 0) {
+        const mapa = new Map();
+        DB.records.forEach(r => {
+          const key = `${r.p}|${r.a}|${r.ue}`;
+          if (!mapa.has(key)) {
+            mapa.set(key, {
+              programa: r.p,
+              actividad: r.a,
+              ue: r.ue,
+              nombre: `Actividad ${r.a}`
+            });
+          }
+        });
+        DB.actividades = [...mapa.values()].sort((x, y) =>
+          x.programa - y.programa || x.actividad - y.actividad || x.ue - y.ue
+        );
+      }
+
+      if (!DB.unidadesEjecutoras || typeof DB.unidadesEjecutoras !== 'object') {
+        DB.unidadesEjecutoras = {};
+      }
+    }
+
+    function showToast(msg, type) {
+      const banner = document.getElementById('toast-banner');
+      banner.className = `rounded-xl p-4 text-sm font-semibold flex items-center justify-between transition-all shadow-md ${
+        type === 'success' ? 'bg-emerald-500 text-white' :
+        type === 'error' ? 'bg-rose-500 text-white' :
+        'bg-sky-600 text-white'
+      }`;
+      banner.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="${type === 'success' ? 'check-circle' : type === 'error' ? 'alert-triangle' : 'info'}" class="w-5 h-5"></i>
+          <span>${msg}</span>
+        </div>
+        <button onclick="this.parentElement.classList.add('hidden')" class="hover:opacity-80">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      `;
+      banner.classList.remove('hidden');
+      lucide.createIcons();
+      setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 6000);
+    }
+  </script>
+</body>
+</html>
