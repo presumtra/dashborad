@@ -525,7 +525,7 @@
         return true;
       }).map(r => `${r.inc}.${r.pp}`));
       selectInciso.innerHTML = '<option value="ALL">Todos</option>';
-      [['1.1','1.1 - Personal Permanente'],['1.2','1.2 - Servicios No Personales Temporario']].forEach(([v,t]) => {
+      [['1.1','1.1 - Personal Permanente'],['1.2','1.2 - Personal Temporario']].forEach(([v,t]) => {
         if (disponibles.has(v)) { const o=document.createElement('option'); o.value=v; o.textContent=t; selectInciso.appendChild(o); }
       });
       selectInciso.value = disponibles.has(anterior) ? anterior : 'ALL';
@@ -628,7 +628,7 @@
           const obj = DB.actividades.find(x => x.programa === Number(p) && x.actividad === Number(a));
           if (obj) desc.push(`Act ${a}: ${obj.nombre}`);
         }
-        if (incisoVal !== 'ALL') desc.push(incisoVal === '1.1' ? '1.1 - Personal Permanente' : '1.2 - Servicios No Personales Temporario');
+        if (incisoVal !== 'ALL') desc.push(incisoVal === '1.1' ? '1.1 - Personal Permanente' : '1.2 - Personal Temporario');
         if (regimenVal !== 'ALL') desc.push(regimenVal === '1' ? '1 - Ley 10.430' : '12 - Jerarquizado Superior');
         if (agrupVal !== 'ALL') {
           const nombres = {1:'1 - Servicio',2:'2 - Obrero',3:'3 - Administrativo',4:'4 - Técnico',5:'5 - Profesional',6:'6 - Jerárquico',14:'14 - Secretarios Privados',15:'15 - Autoridades Superiores'};
@@ -687,7 +687,7 @@
     function getIncisoPPLabel(inc, pp) {
       const conocidos = {
         '1.1': '1.1 - Personal Permanente',
-        '1.2': '1.2 - Servicios No Personales Temporario'
+        '1.2': '1.2 - Personal Temporario'
       };
       return conocidos[`${inc}.${pp}`] || `${inc}.${pp}`;
     }
@@ -975,7 +975,7 @@ const CACHE_KEY_CARGOS_PARAM = "cargos_dashboard_param";
 const CACHE_KEY_CARGOS_TIMESTAMP = "cargos_dashboard_time";
 
 // Tiempo de expiración: 15 minutos en milisegundos
-const TIEMPO_EXPIRACION_MS = 15 * 60 * 1000;
+const TIEMPO_EXPIRACION_MS = 45 * 60 * 1000;
 
 /**
  * Procesa el JSON de cargos y actualiza la interfaz.
