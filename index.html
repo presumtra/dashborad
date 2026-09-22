@@ -1326,160 +1326,198 @@
       XLSX.writeFile(wb, `Imputaciones_MTRA_${Date.now()}.xlsx`);
     }
 
-    // ================================================================
-    // CONEXIÓN CON GOOGLE SHEETS
-    // ================================================================
-    // Endpoint existente del parametrizado.
-    const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbz4ZovqIkXDef3-dKwQRuuhY3ywGkafX91CR1PbqG8O-GgNlqw06vYUGNZG1FCN1l95/exec";
+// ================================================================
+// CONEXIÓN CON GOOGLE SHEETS Y GESTIÓN DE CACHÉ CON EXPIRACIÓN
+// ================================================================
+const API_PARAMETRIZADO_URL = "https://script.google.com/macros/s/AKfycbz4ZovqIkXDef3-dKwQRuuhY3ywGkafX91CR1PbqG8O-GgNlqw06vYUGNZG1FCN1l95/exec";
+const API_RECURSOS_URL = "https://script.google.com/macros/s/AKfycbxxNeSIlaQjhwuzlGDtx2ntdnLZhzmryPFJBy-aDPJqrpMJqcRGm58AnijO-Q_KSXl4/exec";
 
-    // Endpoint del Apps Script que genera el JSON de la hoja "recursos".
-    // Se utiliza exactamente la URL suministrada.
-    const API_RECURSOS_URL = "https://script.google.com/macros/s/AKfycbxxNeSIlaQjhwuzlGDtx2ntdnLZhzmryPFJBy-aDPJqrpMJqcRGm58AnijO-Q_KSXl4/exec";
+// Claves de almacenamiento local
+const CACHE_KEY_PARAM = "app_dashboard_param";
+const CACHE_KEY_RECURSOS = "app_dashboard_recursos";
+const CACHE_KEY_TIMESTAMP = "app_dashboard_time";
 
-    /**
-     * Actualiza las DOS fuentes:
-     *   1) parametrizado
-     *   2) recursos
-     *
-     * El botón queda como único punto de actualización del tablero.
-     */
-    async function actualizarDesdeGoogleSheets() {
-      const button = document.getElementById('btn-refresh-sheets');
-      const label = button?.querySelector('span');
-      const icon = button?.querySelector('i');
+// Tiempo de expiración: 15 minutos en milisegundos
+const TIEMPO_EXPIRACION_MS = 15 * 60 * 1000;
 
-      if (button) {
-        button.disabled = true;
-        button.classList.add('opacity-70', 'cursor-wait');
-      }
-      if (label) label.textContent = 'Actualizando...';
-      if (icon) icon.classList.add('animate-spin');
+/**
+ * Procesa los datos JSON y actualiza la interfaz de usuario.
+ */
+function procesarYRenderizarTablero(dataParam, dataRecursos) {
+  // ------------------------------------------------------------
+  // PARAMETRIZADO
+  // ------------------------------------------------------------
+  let rowsParam;
+  if (Array.isArray(dataParam)) {
+    rowsParam = dataParam;
+  } else if (dataParam && Array.isArray(dataParam.records)) {
+    rowsParam = dataParam.records;
+  } else {
+    throw new Error('El parametrizado no devolvió un array de registros válido.');
+  }
 
-      showToast('Actualizando parametrizado y recursos desde Google Sheets...', 'info');
-      document.getElementById('label-fecha-corte').innerText = 'Cargando...';
-      document.getElementById('label-fecha-corte-recursos').innerText = 'Cargando...';
+  DB.records = parseApiRows(rowsParam);
 
-      try {
-        // Las dos consultas son independientes y se realizan en paralelo.
-        const [responseParam, responseRecursos] = await Promise.all([
-          fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
-            method: 'GET',
-            cache: 'no-store'
-          }),
-          fetch(API_RECURSOS_URL + (API_RECURSOS_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
-            method: 'GET',
-            cache: 'no-store'
-          })
-        ]);
-
-        if (!responseParam.ok) {
-          throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
-        }
-
-        if (!responseRecursos.ok) {
-          throw new Error(`Error en recursos: HTTP ${responseRecursos.status}`);
-        }
-
-        const [dataParam, dataRecursos] = await Promise.all([
-          responseParam.json(),
-          responseRecursos.json()
-        ]);
-
-        // ------------------------------------------------------------
-        // PARAMETRIZADO
-        // ------------------------------------------------------------
-        let rowsParam;
-        if (Array.isArray(dataParam)) {
-          rowsParam = dataParam;
-        } else if (dataParam && Array.isArray(dataParam.records)) {
-          rowsParam = dataParam.records;
-        } else {
-          throw new Error('El parametrizado no devolvió un array de registros válido.');
-        }
-
-        DB.records = parseApiRows(rowsParam);
-
-        if (dataParam && !Array.isArray(dataParam)) {
-          if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
-          if (dataParam.sigla) DB.sigla = dataParam.sigla;
-          if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
-          if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
-          if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
-          if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
-            DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
-          }
-        }
-
-        construirCatalogosDesdeRegistros();
-
-        if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
-          DB.fechaCorte = new Date().toLocaleDateString('es-AR');
-        }
-
-        document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
-
-        // ------------------------------------------------------------
-        // RECURSOS
-        // ------------------------------------------------------------
-        if (!dataRecursos || !Array.isArray(dataRecursos.records)) {
-          throw new Error('El Apps Script de recursos no devolvió un objeto con records[].');
-        }
-
-        // Eliminamos únicamente filas que no tengan recurso. El JSON actual
-        // contiene al final una fila agregada sin recurso que no debe entrar
-        // en los gráficos ni KPIs.
-        RECURSOS = dataRecursos.records.filter(r =>
-          r && String(r.recurso || '').trim() !== ''
-        ).map(normalizarRegistroRecurso);
-
-        const fechaRecursos =
-          dataRecursos.fechaActualizacion ||
-          dataRecursos.fechaCorte ||
-          obtenerFechaMaximaRecursos(RECURSOS);
-
-        document.getElementById('label-fecha-corte-recursos').innerText =
-          formatearFechaCorte(fechaRecursos);
-
-        // La estructura presupuestaria de Recursos utiliza los datos del
-        // parametrizado, mientras que la recaudación y sus gráficos utilizan
-        // exclusivamente el JSON de recursos.
-        calcularEstructuraRecursosDesdeParametrizado();
-
-        populateFilterOptions();
-        resetFilters();
-
-        // Inicializar la sección Recursos con todos los registros.
-        resetFiltersRecursos();
-
-        const totalParam = DB.records.length;
-        const totalRecursos = RECURSOS.length;
-
-        showToast(
-          `Actualización completa: ${totalParam.toLocaleString('es-AR')} registros parametrizados y ${totalRecursos.toLocaleString('es-AR')} registros de recursos.`,
-          'success'
-        );
-
-      } catch (error) {
-        console.error('Error al actualizar desde Google Sheets:', error);
-
-        document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
-        document.getElementById('label-fecha-corte-recursos').innerText = 'Error de conexión';
-
-        showToast(
-          'No se pudieron actualizar ambas fuentes: ' + error.message,
-          'error'
-        );
-
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.classList.remove('opacity-70', 'cursor-wait');
-        }
-        if (label) label.textContent = 'Actualizar desde Google Sheets';
-        if (icon) icon.classList.remove('animate-spin');
-        if (window.lucide) lucide.createIcons();
-      }
+  if (dataParam && !Array.isArray(dataParam)) {
+    if (dataParam.ministerio) DB.ministerio = dataParam.ministerio;
+    if (dataParam.sigla) DB.sigla = dataParam.sigla;
+    if (dataParam.fechaCorte) DB.fechaCorte = dataParam.fechaCorte;
+    if (dataParam.programas && typeof dataParam.programas === 'object') DB.programas = dataParam.programas;
+    if (Array.isArray(dataParam.actividades)) DB.actividades = dataParam.actividades;
+    if (dataParam.unidadesEjecutoras && typeof dataParam.unidadesEjecutoras === 'object') {
+      DB.unidadesEjecutoras = dataParam.unidadesEjecutoras;
     }
+  }
+
+  construirCatalogosDesdeRegistros();
+
+  if (!DB.fechaCorte || DB.fechaCorte === 'Cargando...') {
+    DB.fechaCorte = new Date().toLocaleDateString('es-AR');
+  }
+
+  document.getElementById('label-fecha-corte').innerText = DB.fechaCorte;
+
+  // ------------------------------------------------------------
+  // RECURSOS
+  // ------------------------------------------------------------
+  if (!dataRecursos || !Array.isArray(dataRecursos.records)) {
+    throw new Error('El Apps Script de recursos no devolvió un objeto con records[].');
+  }
+
+  RECURSOS = dataRecursos.records.filter(r =>
+    r && String(r.recurso || '').trim() !== ''
+  ).map(normalizarRegistroRecurso);
+
+  const fechaRecursos =
+    dataRecursos.fechaActualizacion ||
+    dataRecursos.fechaCorte ||
+    obtenerFechaMaximaRecursos(RECURSOS);
+
+  document.getElementById('label-fecha-corte-recursos').innerText =
+    formatearFechaCorte(fechaRecursos);
+
+  calcularEstructuraRecursosDesdeParametrizado();
+  populateFilterOptions();
+  resetFilters();
+  resetFiltersRecursos();
+}
+
+/**
+ * Consulta las APIs de Google Sheets, guarda en caché con la fecha actual y renderiza.
+ */
+async function actualizarDesdeGoogleSheets() {
+  const button = document.getElementById('btn-refresh-sheets');
+  const label = button?.querySelector('span');
+  const icon = button?.querySelector('i');
+
+  if (button) {
+    button.disabled = true;
+    button.classList.add('opacity-70', 'cursor-wait');
+  }
+  if (label) label.textContent = 'Actualizando...';
+  if (icon) icon.classList.add('animate-spin');
+
+  showToast('Actualizando parametrizado y recursos desde Google Sheets...', 'info');
+  document.getElementById('label-fecha-corte').innerText = 'Cargando...';
+  document.getElementById('label-fecha-corte-recursos').innerText = 'Cargando...';
+
+  try {
+    const [responseParam, responseRecursos] = await Promise.all([
+      fetch(API_PARAMETRIZADO_URL + (API_PARAMETRIZADO_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+        method: 'GET',
+        cache: 'no-store'
+      }),
+      fetch(API_RECURSOS_URL + (API_RECURSOS_URL.includes('?') ? '&' : '?') + '_ts=' + Date.now(), {
+        method: 'GET',
+        cache: 'no-store'
+      })
+    ]);
+
+    if (!responseParam.ok) {
+      throw new Error(`Error en parametrizado: HTTP ${responseParam.status}`);
+    }
+
+    if (!responseRecursos.ok) {
+      throw new Error(`Error en recursos: HTTP ${responseRecursos.status}`);
+    }
+
+    const [dataParam, dataRecursos] = await Promise.all([
+      responseParam.json(),
+      responseRecursos.json()
+    ]);
+
+    // 💾 Guardamos datos y marca de tiempo actual en milisegundos
+    localStorage.setItem(CACHE_KEY_PARAM, JSON.stringify(dataParam));
+    localStorage.setItem(CACHE_KEY_RECURSOS, JSON.stringify(dataRecursos));
+    localStorage.setItem(CACHE_KEY_TIMESTAMP, Date.now().toString());
+
+    // Renderizamos los datos
+    procesarYRenderizarTablero(dataParam, dataRecursos);
+
+    const totalParam = DB.records.length;
+    const totalRecursos = RECURSOS.length;
+
+    showToast(
+      `Actualización completa: ${totalParam.toLocaleString('es-AR')} registros parametrizados y ${totalRecursos.toLocaleString('es-AR')} registros de recursos.`,
+      'success'
+    );
+
+  } catch (error) {
+    console.error('Error al actualizar desde Google Sheets:', error);
+
+    document.getElementById('label-fecha-corte').innerText = 'Error de conexión';
+    document.getElementById('label-fecha-corte-recursos').innerText = 'Error de conexión';
+
+    showToast(
+      'No se pudieron actualizar ambas fuentes: ' + error.message,
+      'error'
+    );
+
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('opacity-70', 'cursor-wait');
+    }
+    if (label) label.textContent = 'Actualizar desde Google Sheets';
+    if (icon) icon.classList.remove('animate-spin');
+    if (window.lucide) lucide.createIcons();
+  }
+}
+
+/**
+ * Carga inicial con verificación de expiración (15 minutos).
+ */
+function cargarDatosIniciales() {
+  const cacheParam = localStorage.getItem(CACHE_KEY_PARAM);
+  const cacheRecursos = localStorage.getItem(CACHE_KEY_RECURSOS);
+  const cacheTime = localStorage.getItem(CACHE_KEY_TIMESTAMP);
+
+  const ahora = Date.now();
+  const timestampGuardado = cacheTime ? parseInt(cacheTime, 10) : 0;
+  const esCácheValida = (ahora - timestampGuardado) < TIEMPO_EXPIRACION_MS;
+
+  // Si existen todos los datos y aún no han pasado 15 minutos:
+  if (cacheParam && cacheRecursos && esCácheValida) {
+    try {
+      console.log('Cargando datos desde la caché local (válida por 15 minutos)...');
+      const dataParam = JSON.parse(cacheParam);
+      const dataRecursos = JSON.parse(cacheRecursos);
+
+      procesarYRenderizarTablero(dataParam, dataRecursos);
+      if (window.lucide) lucide.createIcons();
+      return;
+    } catch (e) {
+      console.warn('Caché dañada, realizando consulta a Google Sheets...', e);
+    }
+  }
+
+  // Si no hay datos o la caché ya expiró (pasaron > 15 minutos), actualizamos desde la API
+  console.log('La caché expiró o no existe. Consultando Google Sheets...');
+  actualizarDesdeGoogleSheets();
+}
+
+// Inicializar al cargar el DOM
+document.addEventListener('DOMContentLoaded', cargarDatosIniciales);
 
     // Normaliza las filas de Google Sheets para que el resto del dashboard
     // trabaje siempre con la estructura interna esperada.
