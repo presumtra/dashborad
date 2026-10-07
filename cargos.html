@@ -74,7 +74,7 @@
      <!-- NAVEGACIÓN DE TABLEROS -->
     <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-0.5 space-y-2">
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-1 mb-0.5">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
           <a href="index.html#seccionpres"
             class="tablero-nav-btn flex items-center justify-center gap-1 px-2 py-1 rounded-xl text-sm font-bold transition text-slate-600 hover:bg-rose-100">
             <i data-lucide="chart-no-axes-combined" class="w-4 h-4"></i>
@@ -90,6 +90,11 @@
             <i data-lucide="user-round-arrow-left" class="w-4 h-4"></i>
             Tablero de Cargos
           </span>
+          <a href="#seccionejecucion"
+            class="tablero-nav-btn flex items-center justify-center gap-1 px-2 py-1 rounded-xl text-sm font-bold transition text-slate-600 hover:bg-violet-100">
+            <i data-lucide="chart-column-big" class="w-4 h-4"></i>
+            Ejecución de Personal
+          </a>
         </div>
       </div>
     </div>
@@ -335,7 +340,7 @@
         <div class="flex items-center gap-3 w-full sm:w-auto">
           <div class="relative w-full sm:w-64">
             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-            <input type="text" id="search-imputaciones" oninput="onSearchInput()" placeholder="Buscar por descripción, código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition">
+            <input type="text" id="search-imputaciones" oninput="onSearchInput()" placeholder="Buscar por código, Objeto Gasto, régimen o agrupamiento..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition">
           </div>
           <button onclick="exportImputacionesExcel()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition border border-slate-300 whitespace-nowrap">
             <i data-lucide="download" class="w-3.5 h-3.5 text-slate-600"></i>
@@ -366,6 +371,231 @@
       </div>
       <div id="imputaciones-pagination" class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500"></div>
     </section>
+
+    <!-- ============================================================
+         SECCIÓN ADICIONAL: EJECUCIÓN PRESUPUESTARIA DE CARGOS
+         Fuente: segunda API de Google Sheets
+         ============================================================ -->
+    <section id="seccionejecucion" class="bg-gradient-to-b from-[#237583] to-[#1ca6b7] rounded-2xl p-4 shadow-sm border border-slate-200/80">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+        <div class="flex items-center gap-2 text-white font-semibold text-base">
+          <i data-lucide="chart-column-big" class="w-4 h-4 text-pink-200"></i>
+          <span>Tablero de Ejecución Presupuestaria de Personal MTRA</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-pink-200">Fecha de corte:</span>
+          <span id="label-fecha-corte-ejecucion" class="font-semibold text-pink-200">Cargando...</span>
+          <button id="btn-refresh-ejecucion" onclick="actualizarEjecucionCargos()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold transition shadow-sm">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Actualizar ejecución</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTROS GLOBALES DE EJECUCIÓN DE PERSONAL -->
+      <section class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 mb-2">
+        <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2 text-slate-700 font-semibold text-sm">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-600"></i>
+            <span>Filtros de Análisis Presupuestario de Personal</span>
+          </div>
+          <button onclick="resetFiltrosEjecucion()" class="text-xs font-medium text-pink-600 hover:text-pink-800 flex items-center gap-1 transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Restablecer todos los filtros</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div>
+            <label for="ej-filter-regimen" class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+              <i data-lucide="scroll-text" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>1. Régimen Estatutario</span>
+            </label>
+            <select id="ej-filter-regimen" onchange="aplicarFiltrosEjecucion()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+              <option value="">Todos</option>
+              <option value="0">0 - Sin régimen</option>
+              <option value="1">1 - Ley 10.430</option>
+              <option value="12">12 - Jerarquizados</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="ej-filter-agrupamiento" class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+              <i data-lucide="building" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>2. Agrupamiento Ocupacional</span>
+            </label>
+            <select id="ej-filter-agrupamiento" onchange="aplicarFiltrosEjecucion()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+              <option value="">Todos</option>
+              <option value="0">0 - Sin Agrupamiento</option>
+              <option value="1">1 - Servicio</option>
+              <option value="2">2 - Obrero</option>
+              <option value="3">3 - Administrativo</option>
+              <option value="4">4 - Técnico</option>
+              <option value="5">5 - Profesionales</option>
+              <option value="6">6 - Jerárquico</option>
+              <option value="14">14 - Secret. y Asesores</option>
+              <option value="15">15 - Aut. Superiores</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="ej-filter-partida" class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
+              <i data-lucide="list-tree" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>3. Partida Principal</span>
+            </label>
+            <select id="ej-filter-partida" onchange="aplicarFiltrosEjecucion()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-xl p-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition font-medium">
+              <option value="">Todas</option>
+              <option value="1.1">1.1 - Personal Permanente</option>
+              <option value="1.2">1.2 - Personal Temporario</option>
+              <option value="1.3">1.3 - Asignaciones Familiares</option>
+              <option value="1.4">1.4 - Asistencia Social al Personal</option>
+              <option value="1.5">1.5 - Beneficios y Compensaciones</option>
+              <option value="1.6">1.6 - Servicios Extraordinarios</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="ej-filter-status-bar" class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span id="ej-filter-active-desc">Mostrando: Inciso 1 - Personal completo</span>
+          </div>
+          <div id="ej-filter-records-count" class="font-medium text-slate-600">-</div>
+        </div>
+      </section>
+
+      <!-- KPI CARDS EJECUCIÓN -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-2">
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Vigente</span>
+            <div class="p-2 bg-sky-50 text-sky-600 rounded-xl"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+          </div>
+          <div id="ej-kpi-vigente" class="text-2xl font-black text-sky-700 tracking-tight">0</div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-sky-500"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Disponible</span>
+            <div class="p-2 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="banknote-check" class="w-5 h-5"></i></div>
+          </div>
+          <div id="ej-kpi-disponible" class="text-2xl font-black text-amber-700 tracking-tight">0</div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Ejecutado</span>
+            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="trending-up" class="w-5 h-5"></i></div>
+          </div>
+          <div id="ej-kpi-ejecutado" class="text-2xl font-black text-emerald-700 tracking-tight">0</div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">% de ejecución</span>
+            <div class="p-2 bg-violet-50 text-violet-600 rounded-xl"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
+          </div>
+          <div id="ej-kpi-pct" class="text-2xl font-black text-violet-700 tracking-tight">0</div>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-violet-500"></div>
+        </div>
+      </section>
+
+      <!-- CHARTS -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-2">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 lg:col-span-2 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="bar-chart-3" class="w-4 h-4 text-sky-600"></i>
+              <h3 class="text-sm font-bold text-slate-800">Vigente Vs Devengado por Agrupamiento Ocupacional</h3>
+            </div>
+            <span class="text-xs text-slate-400">Importes</span>
+          </div>
+          <div class="flex-1 relative min-h-[300px]"><canvas id="chart-ej-inciso1"></canvas></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i>
+              <h3 class="text-sm font-bold text-slate-800">Distribución Devengado por Partida</h3>
+            </div>
+          </div>
+          <div class="flex-1 relative min-h-[300px] flex items-center justify-center"><canvas id="chart-ej-doughnut"></canvas></div>
+        </div>
+      </section>
+
+      <!-- INFORME PRESUPUESTARIO DEL PERSONAL -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden mb-2">
+        <div class="p-5 border-b border-slate-200/80 bg-slate-50/50">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-violet-600"></span>
+                <h2 class="text-base font-bold text-slate-900">Informe Presupuestario del Personal MTRA</h2>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">Detalle jerárquico por Partida Principal, Partida Parcial y Partida Subparcial</p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100/90 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 table-sticky-header">
+                <th class="py-1.5 px-4">Partidas</th>
+                <th class="py-1.5 px-4 text-center">Vigente</th>
+                <th class="py-1.5 px-4 text-center">Compromiso</th>
+                <th class="py-1.5 px-4 text-center">Devengado</th>
+                <th class="py-1.5 px-4 text-center">Disponible</th>
+              </tr>
+            </thead>
+            <tbody id="ej-table-informe-body" class="divide-y divide-slate-200/60 font-mono text-[11px]"></tbody>
+            <tfoot id="ej-table-informe-foot" class="bg-slate-900 text-white font-bold text-xs"></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- EXPLORADOR -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div class="p-5 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+          <div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="table-properties" class="w-4 h-4 text-slate-600"></i>
+              <h3 class="text-sm font-bold text-slate-900">Explorador de Partidas Presupuestarias de Personal MTRA</h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Detalle de ejecución por imputación presupuestaria, objeto de gasto, régimen y agrupamiento</p>
+          </div>
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="relative w-full sm:w-64">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="ej-search" oninput="renderEjecucionExplorer()" placeholder="Buscar por descripción, código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition">
+            </div>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-96">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-slate-100 text-slate-600 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200 table-sticky-header">
+                <th class="py-2.5 px-1 text-center">Prg</th>
+                <th class="py-2.5 px-1 text-center">Act</th>
+                <th class="py-2.5 px-1 text-center">UE</th>
+                <th class="py-2.5 px-1 text-center">Partida</th>
+                <th class="py-2.5 px-1 min-w-[250px] w-1/5 text-center">Descripción</th>
+                <th class="py-2.5 px-1 text-center">Rég. Estatutario</th>
+                <th class="py-2.5 px-1 text-center">Agr. Ocupacional</th>
+                <th class="py-2.5 px-1 text-center">Vigente</th>
+                <th class="py-2.5 px-1 text-center">Compromiso</th>
+                <th class="py-2.5 px-1 text-center">Devengado</th>
+                <th class="py-2.5 px-1 text-center">Disponible</th>
+              </tr>
+            </thead>
+            <tbody id="ej-explorer-body" class="divide-y divide-slate-100 font-mono text-[11px]"></tbody>
+          </table>
+        </div>
+        <div id="ej-explorer-count" class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500"></div>
+      </section>
+    </section>
+
   </main>
 
   <!-- FOOTER -->
@@ -1195,6 +1425,549 @@ document.addEventListener('DOMContentLoaded', cargarDatosIniciales);
         banner.classList.add('hidden');
       }, 6000);
     }
+
+    // ================================================================
+    // EJECUCIÓN PRESUPUESTARIA DE CARGOS - SEGUNDA API
+    // ================================================================
+    const API_EJECUCION_CARGOS_URL = "https://script.google.com/macros/s/AKfycbxUl6a-cRWeyK1GmpJYBXboaRP25FqYwJnB1n_rP49hNg7sTnbn4rWpV2XgnT9JMSsA/exec";
+    const CACHE_KEY_EJECUCION_CARGOS = "cargos_dashboard_ejecucion";
+    const CACHE_KEY_EJECUCION_CARGOS_TIME = "cargos_dashboard_ejecucion_time";
+    const EJECUCION_CACHE_MS = 45 * 60 * 1000;
+
+    let EJECUCION_RECORDS = [];
+    let chartEjInciso1Instance = null;
+    let chartEjDoughnutInstance = null;
+
+    const EJ_PARTIDAS_1 = {
+      "1.1": "1.1 - Personal Permanente",
+      "1.2": "1.2 - Personal Temporario",
+      "1.3": "1.3 - Asignaciones Familiares",
+      "1.4": "1.4 - Asistencia Social al Personal",
+      "1.5": "1.5 - Beneficios y Compensaciones",
+      "1.6": "1.6 - Servicios Extraordinarios"
+    };
+
+    function ejNum(v) {
+      if (v === null || v === undefined || v === '') return 0;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      const str = String(v).trim().replace(/\s/g,'');
+      if (!str) return 0;
+      // Acepta 1.234.567,89 y también 1234567.89
+      const normalized = str.includes(',') ? str.replace(/\./g,'').replace(',','.') : str.replace(/\.(?=.*\.)/g,'');
+      const n = Number(normalized);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function ejFirst(r, keys, fallback='') {
+      for (const k of keys) {
+        if (r[k] !== undefined && r[k] !== null && r[k] !== '') return r[k];
+      }
+      return fallback;
+    }
+
+    function parseApiEjecucion(rows, meta={}) {
+      return rows.map(r => {
+        // Estructura real del API Inc1.js:
+        // p, a, ue, inc, pp, pparc, psub, rest, agrup, desc,
+        // sanc, vig, disp, prev, def, dev, pag.
+        const inc = ejNum(r.inc);
+        const pp = ejNum(r.pp);
+        const pparc = ejNum(r.pparc);
+        const psub = ejNum(r.psub);
+
+        return {
+          p: ejNum(r.p),
+          a: ejNum(r.a),
+          ue: ejNum(r.ue),
+          inc,
+          pp,
+          pparc,
+          psub,
+
+          // El API entrega el código, pero no una descripción separada.
+          ree: ejNum(r.rest),
+          desr: '',
+          ao: ejNum(r.agrup),
+          desao: '',
+
+          // "Objeto Gasto" es la única descripción textual entregada.
+          desc: String(r.desc ?? '').trim(),
+          desp: String(r.desc ?? '').trim(),
+          despparc: String(r.desc ?? '').trim(),
+          despsub: String(r.desc ?? '').trim(),
+
+          vig: ejNum(r.vig),
+          prev: ejNum(r.prev),
+
+          // El API no entrega un campo "Compromiso"; entrega "Definitivo".
+          // Para esta sección, "Compromiso" se representa con el valor Definitivo.
+          comp: ejNum(r.def),
+
+          dev: ejNum(r.dev),
+          disp: ejNum(r.disp),
+
+          sanc: ejNum(r.sanc),
+          pag: ejNum(r.pag)
+        };
+      });
+    }
+
+    function ejLabelPP(r) {
+      const key = `${r.inc}.${r.pp}`;
+      return EJ_PARTIDAS_1[key] || `${key}`;
+    }
+
+    function ejCodigoImputacion(r) {
+      return `${Math.trunc(r.inc)}.${Math.trunc(r.pp)}.${Math.trunc(r.pparc)}.${Math.trunc(r.psub)}`;
+    }
+
+    function ejDescripcion(r) {
+      // El API Inc1.js entrega la descripción en "Objeto Gasto",
+      // normalizada en parseApiEjecucion() como r.desc.
+      return r.desc || '';
+    }
+
+    // Etiquetas jerárquicas del Informe Presupuestario.
+    // El código se construye con la imputación completa y la descripción
+    // disponible en "Objeto Gasto".
+    function ejLabelParcial(r) {
+      const codigo = `${Math.trunc(r.inc)}.${Math.trunc(r.pp)}.${Math.trunc(r.pparc)}`;
+      const descripcion = ejDescripcion(r);
+      return descripcion ? `${codigo} - ${descripcion}` : codigo;
+    }
+
+    function ejLabelSubparcial(r) {
+      const codigo = `${Math.trunc(r.inc)}.${Math.trunc(r.pp)}.${Math.trunc(r.pparc)}.${Math.trunc(r.psub)}`;
+      const descripcion = ejDescripcion(r);
+      return descripcion ? `${codigo} - ${descripcion}` : codigo;
+    }
+
+    function ejLabelReg(r) {
+      const codigo = Math.trunc(r.ree);
+      const descripciones = {
+        0: 'S/RE',
+        1: 'Ley 10.430',
+        12: 'Jerarquizados'
+      };
+      return descripciones[codigo] !== undefined
+        ? `${codigo} - ${descripciones[codigo]}`
+        : `${codigo}`;
+    }
+
+    function ejLabelAO(r) {
+      const codigo = Math.trunc(r.ao);
+      const descripciones = {
+        0: 'Sin agrupamiento',
+        1: 'Servicio',
+        2: 'Obrero',
+        3: 'Administrativo',
+        4: 'Técnico',
+        5: 'Profesionales',
+        6: 'Jerárquico',
+        14: 'Sec. y Asesores',
+        15: 'Aut. Superiores'
+      };
+      return descripciones[codigo] !== undefined
+        ? `${codigo} - ${descripciones[codigo]}`
+        : `${codigo}`;
+    }
+
+    function ejEsc(v) {
+      return String(v ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    function sumEjecucion(records) {
+      return records.reduce((t,r) => ({
+        vig:t.vig+r.vig, prev:t.prev+r.prev, comp:t.comp+r.comp,
+        dev:t.dev+r.dev, disp:t.disp+r.disp
+      }), {vig:0,prev:0,comp:0,dev:0,disp:0});
+    }
+
+    function getFiltrosEjecucion() {
+      return {
+        regimen: document.getElementById('ej-filter-regimen')?.value ?? '',
+        agrupamiento: document.getElementById('ej-filter-agrupamiento')?.value ?? '',
+        partida: document.getElementById('ej-filter-partida')?.value ?? ''
+      };
+    }
+
+    function getRegistrosEjecucionFiltrados() {
+      const f = getFiltrosEjecucion();
+
+      return EJECUCION_RECORDS.filter(r => {
+        // Toda esta sección trabaja exclusivamente sobre Inciso 1.
+        if (Number(r.inc) !== 1) return false;
+
+        const ppKey = `${r.inc}.${r.pp}`;
+
+        if (f.regimen !== '' && String(r.ree) !== f.regimen) return false;
+        if (f.agrupamiento !== '' && String(r.ao) !== f.agrupamiento) return false;
+        if (f.partida !== '' && ppKey !== f.partida) return false;
+
+        return true;
+      });
+    }
+
+    function actualizarDescripcionFiltrosEjecucion(records) {
+      const f = getFiltrosEjecucion();
+      const partes = ['Inciso 1'];
+
+      if (f.regimen !== '') {
+        partes.push(EJ_REGIMENES[Number(f.regimen)] || `${f.regimen} - Régimen`);
+      }
+      if (f.agrupamiento !== '') {
+        partes.push(EJ_AGRUPAMIENTOS[Number(f.agrupamiento)] || `${f.agrupamiento} - Agrupamiento`);
+      }
+      if (f.partida !== '') {
+        partes.push(EJ_PARTIDAS_1[f.partida] || f.partida);
+      }
+
+      const descripcion = partes.length === 1
+        ? 'Inciso 1 - Personal completo'
+        : partes.join(' | ');
+
+      const descEl = document.getElementById('ej-filter-active-desc');
+      const countEl = document.getElementById('ej-filter-records-count');
+
+      if (descEl) descEl.textContent = `Mostrando: ${descripcion}`;
+      if (countEl) countEl.textContent = `${records.length} registros`;
+    }
+
+    function actualizarKpisEjecucion(records = getRegistrosEjecucionFiltrados()) {
+      const totalVigente = records.reduce((acc, r) => acc + r.vig, 0);
+      const totalDisponible = records.reduce((acc, r) => acc + r.disp, 0);
+      const totalEjecutado = totalVigente - totalDisponible;
+      const pct = totalVigente > 0 ? (totalEjecutado / totalVigente * 100) : 0;
+      document.getElementById('ej-kpi-vigente').textContent = fmtMoney(totalVigente);
+      document.getElementById('ej-kpi-disponible').textContent = fmtMoney(totalDisponible);
+      document.getElementById('ej-kpi-ejecutado').textContent = fmtMoney(totalEjecutado);
+      document.getElementById('ej-kpi-pct').textContent = fmtPct(pct);
+    }
+
+    function aplicarFiltrosEjecucion() {
+      const records = getRegistrosEjecucionFiltrados();
+
+      actualizarDescripcionFiltrosEjecucion(records);
+      actualizarKpisEjecucion(records);
+      actualizarGraficosEjecucion(records);
+      renderInformeEjecucion(records);
+      renderEjecucionExplorer(records);
+    }
+
+    function resetFiltrosEjecucion() {
+      const ids = ['ej-filter-regimen','ej-filter-agrupamiento','ej-filter-partida'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+
+      aplicarFiltrosEjecucion();
+    }
+
+    function actualizarGraficosEjecucion(records = getRegistrosEjecucionFiltrados()) {
+      // Gráfico "Vigente Vs Devengado": Inciso 1 agrupado por Agrupamiento Ocupacional.
+      // El código 0 se muestra explícitamente como "0 - Sin agrupamiento".
+      const mapa = new Map();
+
+      records.forEach(r => {
+
+        const codigoAO = Number.isFinite(Number(r.ao)) ? Math.trunc(Number(r.ao)) : 0;
+
+        if (!mapa.has(codigoAO)) mapa.set(codigoAO,{vig:0,dev:0});
+        mapa.get(codigoAO).vig += Number(r.vig) || 0;
+        mapa.get(codigoAO).dev += Number(r.dev) || 0;
+      });
+
+      const orden = [...mapa.keys()].sort((a,b) => a - b);
+      // Etiquetas con código y descripción del agrupamiento ocupacional.
+      // Se reutiliza ejLabelAO para mantener una única fuente de descripciones.
+      const labels = orden.map(codigo => ejLabelAO({ ao: Number(codigo) }));
+      const vig = orden.map(k => mapa.get(k).vig);
+      const dev = orden.map(k => mapa.get(k).dev);
+
+      const ctxBar = document.getElementById('chart-ej-inciso1').getContext('2d');
+      if (chartEjInciso1Instance) chartEjInciso1Instance.destroy();
+      chartEjInciso1Instance = new Chart(ctxBar,{
+        type:'bar',
+        data:{labels,datasets:[
+          {label:'Vigente',data:vig,backgroundColor:'rgba(14,165,233,0.82)',borderRadius:6},
+          {label:'Devengado',data:dev,backgroundColor:'rgba(232,31,118,0.82)',borderRadius:6}
+        ]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          indexAxis:'y',
+          plugins:{legend:{position:'top'},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtMoney(ctx.raw)}`}}},
+          scales:{
+            x:{beginAtZero:true,ticks:{callback:v=>Number(v).toLocaleString('es-AR')}},
+            y:{ticks:{autoSkip:false}}
+          }
+        }
+      });
+
+      const ctxPie = document.getElementById('chart-ej-doughnut').getContext('2d');
+      if (chartEjDoughnutInstance) chartEjDoughnutInstance.destroy();
+      chartEjDoughnutInstance = new Chart(ctxPie,{
+        type:'doughnut',
+        data:{labels,datasets:[{
+          data:dev,
+          backgroundColor:['#16a34a','#8b5cf6','#0ea5e9','#0891b2','#e81f76','#8b5cf6','#10b981','#f59e0b','#ef4444'],
+          borderWidth:2,borderColor:'#ffffff'
+        }]},
+        options:{
+          responsive:true,maintainAspectRatio:false,cutout:'62%',
+          plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}},
+            tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${fmtMoney(ctx.raw)}`}}}
+        }
+      });
+    }
+
+    const EJ_REGIMENES = {
+      0: '0 - Sin régimen',
+      1: '1 - Ley 10.430',
+      12: '12 - Jerarquizados'
+    };
+
+    const EJ_AGRUPAMIENTOS = {
+      0: '0 - S/Agrupamiento',
+      1: '1 - Servicio',
+      2: '2 - Obrero',
+      3: '3 - Administrativo',
+      4: '4 - Técnico',
+      5: '5 - Profesionales',
+      6: '6 - Jerárquico',
+      14: '14 - Secret. y Asesores',
+      15: '15 - Aut. Superiores'
+    };
+
+    function filtrarInformeEjecucion() {
+      return getRegistrosEjecucionFiltrados();
+    }
+
+    function calcularInformeEjecucion(records) {
+      const partidas = new Map();
+
+      records.forEach(r => {
+        const ppKey = `${r.inc}.${r.pp}`;
+        if (!partidas.has(ppKey)) {
+          partidas.set(ppKey, {
+            r,
+            recordsDirectos: [],
+            parciales: new Map()
+          });
+        }
+
+        const P = partidas.get(ppKey);
+
+        // Si la Partida Parcial es 0, el registro no debe generar una
+        // fila "-". Sus valores quedan agrupados directamente en la
+        // Partida Principal.
+        if (Number(r.pparc) === 0) {
+          P.recordsDirectos.push(r);
+          return;
+        }
+
+        const parcialKey = `${ppKey}.${r.pparc}`;
+
+        if (!P.parciales.has(parcialKey)) {
+          P.parciales.set(parcialKey, {
+            r,
+            recordsDirectos: [],
+            subparciales: new Map()
+          });
+        }
+
+        const PP = P.parciales.get(parcialKey);
+
+        // Si la Partida Subparcial es 0, el registro queda agrupado
+        // directamente en su Partida Parcial y no genera una fila "-".
+        if (Number(r.psub) === 0) {
+          PP.recordsDirectos.push(r);
+          return;
+        }
+
+        const subKey = `${parcialKey}.${r.psub}`;
+
+        if (!PP.subparciales.has(subKey)) {
+          PP.subparciales.set(subKey, { r, records: [] });
+        }
+        PP.subparciales.get(subKey).records.push(r);
+      });
+
+      const rows = [];
+      const ordenPartidas = Object.keys(EJ_PARTIDAS_1).filter(k => partidas.has(k));
+
+      ordenPartidas.forEach(ppKey => {
+        const P = partidas.get(ppKey);
+
+        // El total de la Partida Principal incluye tanto los registros
+        // con Parcial/Subparcial informado como los que tienen códigos 0.
+        const pRecords = [...P.recordsDirectos];
+        P.parciales.forEach(PP => {
+          pRecords.push(...PP.recordsDirectos);
+          PP.subparciales.forEach(S => pRecords.push(...S.records));
+        });
+
+        rows.push({
+          level: 0,
+          label: EJ_PARTIDAS_1[ppKey],
+          ...sumEjecucion(pRecords)
+        });
+
+        [...P.parciales.entries()]
+          .sort((a,b) => {
+            const x = Number(a[0].split('.')[2]);
+            const y = Number(b[0].split('.')[2]);
+            return x - y;
+          })
+          .forEach(([parcialKey, PP]) => {
+            const parcRecords = [...PP.recordsDirectos];
+            PP.subparciales.forEach(S => parcRecords.push(...S.records));
+
+            rows.push({
+              level: 1,
+              label: ejLabelParcial(PP.r),
+              ...sumEjecucion(parcRecords)
+            });
+
+            [...PP.subparciales.entries()]
+              .sort((a,b) => {
+                const x = Number(a[0].split('.')[3]);
+                const y = Number(b[0].split('.')[3]);
+                return x - y;
+              })
+              .forEach(([subKey, S]) => {
+                rows.push({
+                  level: 2,
+                  label: ejLabelSubparcial(S.r),
+                  ...sumEjecucion(S.records)
+                });
+              });
+          });
+      });
+
+      return rows;
+    }
+
+    function renderInformeEjecucion(records = getRegistrosEjecucionFiltrados()) {
+      const tbody = document.getElementById('ej-table-informe-body');
+      const tfoot = document.getElementById('ej-table-informe-foot');
+      if (!tbody || !tfoot) return;
+
+      const rows = calcularInformeEjecucion(records);
+      tbody.innerHTML = '';
+
+      rows.forEach(r => {
+        const pad = {0:'pl-4',1:'pl-10',2:'pl-16'}[r.level];
+        const weight = {0:'font-bold text-slate-950',1:'font-semibold text-slate-800',2:'font-medium text-slate-700'}[r.level];
+        const bg = {0:'bg-slate-50/70',1:'',2:''}[r.level];
+
+        tbody.insertAdjacentHTML('beforeend', `<tr class="hover:bg-slate-50 transition-colors ${bg}">
+          <td class="py-1.5 px-4 ${pad} ${weight} text-xs">${ejEsc(r.label)}</td>
+          <td class="py-1.5 px-4 text-center text-sky-700">${fmtMoney(r.vig)}</td>
+          <td class="py-1.5 px-4 text-center text-violet-700">${fmtMoney(r.comp)}</td>
+          <td class="py-1.5 px-4 text-center text-emerald-700">${fmtMoney(r.dev)}</td>
+          <td class="py-1.5 px-4 text-center text-amber-700">${fmtMoney(r.disp)}</td>
+        </tr>`);
+      });
+
+      const totals = sumEjecucion(records);
+      tfoot.innerHTML = `<tr class="border-t-2 border-slate-700">
+        <td class="py-3 px-4 font-sans text-white uppercase tracking-wider font-bold">TOTAL FILTRADO</td>
+        <td class="py-3 px-4 text-center text-sky-300">${fmtMoney(totals.vig)}</td>
+        <td class="py-3 px-4 text-center text-violet-300">${fmtMoney(totals.comp)}</td>
+        <td class="py-3 px-4 text-center text-emerald-300">${fmtMoney(totals.dev)}</td>
+        <td class="py-3 px-4 text-center text-amber-300">${fmtMoney(totals.disp)}</td>
+      </tr>`;
+    }
+
+    function renderEjecucionExplorer(records = getRegistrosEjecucionFiltrados()) {
+      const q=(document.getElementById('ej-search').value||'').toLowerCase().trim();
+      const rows=records.filter(r=>{
+        if(!q) return true;
+        const text=[
+          r.p,r.a,r.ue,
+          ejCodigoImputacion(r),
+          ejDescripcion(r),
+          r.ree,ejLabelReg(r),
+          r.ao,ejLabelAO(r)
+        ].join(' ').toLowerCase();
+        return text.includes(q);
+      });
+      const tbody=document.getElementById('ej-explorer-body');
+      tbody.innerHTML='';
+      rows.forEach(r=>{
+        tbody.insertAdjacentHTML('beforeend',`<tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-2 px-1 font-sans text-center text-slate-700">${ejEsc(r.p)}</td>
+          <td class="py-2 px-1 font-sans text-center text-slate-700">${ejEsc(r.a)}</td>
+          <td class="py-2 px-1 font-sans text-center text-slate-700">${ejEsc(r.ue)}</td>
+          <td class="py-2 px-1 font-mono font-semibold text-center text-slate-900 whitespace-nowrap">${ejEsc(ejCodigoImputacion(r))}</td>
+          <td class="py-2 px-1 font-sans text-slate-600 min-w-[250px] w-1/5">${ejEsc(ejDescripcion(r))}</td>
+          <td class="py-2 px-1 font-sans text-slate-500 whitespace-nowrap">${ejEsc(ejLabelReg(r))}</td>
+          <td class="py-2 px-1 font-sans text-slate-500">${ejEsc(ejLabelAO(r))}</td>
+          <td class="py-2 px-1 text-center text-sky-700">${fmtMoney(r.vig)}</td>
+          <td class="py-2 px-1 text-center text-violet-700">${fmtMoney(r.comp)}</td>
+          <td class="py-2 px-1 text-center text-emerald-700">${fmtMoney(r.dev)}</td>
+          <td class="py-2 px-1 text-center text-amber-700">${fmtMoney(r.disp)}</td>
+        </tr>`);
+      });
+      document.getElementById('ej-explorer-count').textContent=`Mostrando ${rows.length} registros de ejecución`;
+    }
+
+    function procesarEjecucionCargos(data) {
+      const rows=Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
+      if(!rows) throw new Error('La API de ejecución no devolvió un array de registros válido.');
+      EJECUCION_RECORDS=parseApiEjecucion(rows,data||{});
+      const fecha=ejFirst(data||{},['fechaCorte','fecha_corte','fechaActualizacion','fecha_actualizacion','fecha'],new Date().toLocaleDateString('es-AR'));
+      document.getElementById('label-fecha-corte-ejecucion').textContent=formatearFechaCorte(String(fecha));
+      aplicarFiltrosEjecucion();
+    }
+
+    async function actualizarEjecucionCargos() {
+      const btn=document.getElementById('btn-refresh-ejecucion');
+      const icon=btn?.querySelector('i');
+      const label=btn?.querySelector('span');
+      if(btn){btn.disabled=true;btn.classList.add('opacity-70','cursor-wait');}
+      if(icon) icon.classList.add('animate-spin');
+      if(label) label.textContent='Actualizando...';
+      try{
+        const response=await fetch(API_EJECUCION_CARGOS_URL+'?_ts='+Date.now(),{method:'GET',cache:'no-store'});
+        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data=await response.json();
+        localStorage.setItem(CACHE_KEY_EJECUCION_CARGOS,JSON.stringify(data));
+        localStorage.setItem(CACHE_KEY_EJECUCION_CARGOS_TIME,Date.now().toString());
+        procesarEjecucionCargos(data);
+        showToast('Ejecución presupuestaria de cargos actualizada.','success');
+      }catch(error){
+        console.error('Error al actualizar ejecución:',error);
+        document.getElementById('label-fecha-corte-ejecucion').textContent='Error de conexión';
+        showToast('No se pudo actualizar la ejecución de cargos: '+error.message,'error');
+      }finally{
+        if(btn){btn.disabled=false;btn.classList.remove('opacity-70','cursor-wait');}
+        if(icon) icon.classList.remove('animate-spin');
+        if(label) label.textContent='Actualizar ejecución';
+        if(window.lucide) lucide.createIcons();
+      }
+    }
+
+    function cargarEjecucionInicial() {
+      const raw=localStorage.getItem(CACHE_KEY_EJECUCION_CARGOS);
+      const time=Number(localStorage.getItem(CACHE_KEY_EJECUCION_CARGOS_TIME)||0);
+      if(raw && Date.now()-time<EJECUCION_CACHE_MS){
+        try{ procesarEjecucionCargos(JSON.parse(raw)); return; }catch(e){ console.warn('Caché de ejecución inválida:',e); }
+      }
+      actualizarEjecucionCargos();
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarEjecucionInicial);
+
+  </script>
+</body>
+</html>
   </script>
 </body>
 </html>
