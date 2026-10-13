@@ -1055,7 +1055,12 @@
         let indent = '';
         let labelClass = 'font-sans text-slate-800';
         let vigClass = 'font-medium text-slate-800';
-        let dispClass = 'text-emerald-700 font-medium';
+        let dispClass = 'font-medium';
+            if (r.disp < 0) {
+              dispClass += ' text-red-600 font-semibold'; // Color rojo para negativos
+            } else {
+              dispClass += ' text-emerald-700'; // Color original para positivos/cero
+            };
         let ejecClass = 'text-indigo-700 font-semibold';
 
         if (r.level === 0) {
@@ -1084,10 +1089,7 @@
         tr.innerHTML = `
           <td class="py-2.5 px-4 ${labelClass}">${indent}${r.label}</td>
           <td class="py-2.5 px-4 text-right ${vigClass}">${fmtMoney(r.vig)}</td>
-          <td class="py-2.5 px-4 text-right tex-emerald-600 ${
-            Number(r.disp) < 0 ? 'text-red-600' : ''}">
-            ${fmtMoney(r.disp)}
-          </td>
+          <td class="py-2.5 px-4 text-right ${dispClass}">${fmtMoney(r.disp)}</td>
           <td class="py-2.5 px-4 text-right ${ejecClass}">${fmtMoney(r.ejec)}</td>
           <td class="py-2.5 px-4 text-center font-sans">
             <div class="flex items-center justify-end gap-2">
