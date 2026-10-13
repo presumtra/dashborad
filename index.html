@@ -1084,7 +1084,13 @@
         tr.innerHTML = `
           <td class="py-2.5 px-4 ${labelClass}">${indent}${r.label}</td>
           <td class="py-2.5 px-4 text-right ${vigClass}">${fmtMoney(r.vig)}</td>
-          <td class="py-2.5 px-4 text-right ${dispClass}">${fmtMoney(r.disp)}</td>
+          <td class="py-2.5 px-4 text-right ${dispClass}">${
+            Number(r.disp) < 0
+              ? 'text-red-600'
+              : ''
+              }">
+            ${fmtMoney(r.disp)}
+          </td>
           <td class="py-2.5 px-4 text-right ${ejecClass}">${fmtMoney(r.ejec)}</td>
           <td class="py-2.5 px-4 text-center font-sans">
             <div class="flex items-center justify-end gap-2">
