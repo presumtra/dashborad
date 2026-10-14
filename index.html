@@ -1080,11 +1080,16 @@
         }
 
         tr.className = rowClass;
-
+        
         const pctClamped = Math.min(100, Math.max(0, r.pct));
         let barColor = 'bg-sky-500';
-        if (r.pct > 80) barColor = 'bg-emerald-500';
-        else if (r.pct < 40) barColor = 'bg-amber-500';
+        if (r.pct > 99) barColor = 'bg-red-500';
+        else if (r.pct > 90) barColor = 'bg-orange-500';
+        else if (r.pct > 80) barColor = 'bg-amber-500';
+        else if (r.pct > 70) barColor = 'bg-yellow-500';
+        else if (r.pct > 60) barColor = 'bg-lime-500';
+        else if (r.pct > 50) barColor = 'bg-emerald-500';
+        else barColor = 'bg-cyan-500';
 
         tr.innerHTML = `
           <td class="py-2.5 px-4 ${labelClass}">${indent}${r.label}</td>
@@ -1851,18 +1856,13 @@ document.addEventListener('DOMContentLoaded', cargarDatosIniciales);
 
     function colorPorcentaje(pct) {
       pct = Math.max(0, Math.min(100, pct));
-      if (pct <= 50) {
-        const t = pct / 50;
-        const r = Math.round(239 + (234 - 239) * t);
-        const g = Math.round(68 + (179 - 68) * t);
-        const b = Math.round(68 + (8 - 68) * t);
-        return `rgb(${r}, ${g}, ${b})`;
-      }
-      const t = (pct - 50) / 50;
-      const r = Math.round(234 + (34 - 234) * t);
-      const g = Math.round(179 + (197 - 179) * t);
-      const b = Math.round(8 + (94 - 8) * t);
-      return `rgb(${r}, ${g}, ${b})`;
+      if (pct > 99) return '#ef4444';      // bg-red-500
+      if (pct > 90) return '#f97316';      // bg-orange-500
+      if (pct > 80) return '#f59e0b';      // bg-amber-500
+      if (pct > 70) return '#eab308';      // bg-yellow-500
+      if (pct > 60) return '#84cc16';      // bg-lime-500
+      if (pct > 50) return '#10b981';      // bg-emerald-500
+      return '#06b6d4';                    // bg-cyan-500 (para 50% o menos)
     }
 
   </script>
